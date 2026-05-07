@@ -89,45 +89,6 @@ Or via CMake target:
 cmake --build --preset debug --target generate_protocol_headers
 ```
 
-## Implemented Command Matrix (TC)
-
-| CLI Command | API Method | CMD_ID | Payload | ACK |
-|---|---|---:|---|---|
-| `acquire-fw-ver` | `AcquireFirmwareVersion()` | `0x01` | empty | yes |
-| `acquire-hw-id` | `AcquireHardwareId()` | `0x02` | empty | yes |
-| `auto-focus [x] [y]` | `AutoFocus(x, y)` | `0x04` | `0x01 + x(2B) + y(2B)` | yes |
-| `zoom <speed>` | `SetAbsoluteZoom(int8_t speed, needAck)` | `0x05` (`ZOOM`) | 1 byte speed | configurable |
-| `rotate <yaw> <pitch>` | `StartRotation(yaw, pitch, needAck)` | `0x07` | 2 bytes speed | configurable |
-| `stop-rotation` | `StopRotation(needAck)` | `0x07` | `0x00 0x00` | configurable |
-| `center` | `Center()` | `0x08` | `0x01` | yes |
-| `acquire-gimbal-info` | `AcquireGimbalConfiguration()` | `0x0A` | empty | yes |
-| `acquire-gimbal-att` | `AcquireGimbalAttitude()` | `0x0D` | empty | yes |
-| `absolute-zoom <value>` | `SetAbsoluteZoom(float)` | `0x0F` | 2 bytes (`int`,`frac*10`) | yes |
-| `set-utc-time <uint64>` | `SetUtcTime(uint64_t us)` | `0x30` | 8 bytes little-endian | yes |
-| `soft-restart [cam] [gimbal]` | `SoftRestart(cam, gimbal)` | `0x80` | 2 bytes flags | yes |
-| `picture` | `TakePicture()` | `0x0C` (`PHOTO_RECORD`) | `0` | no |
-| `record` | `StartStopRecording()` | `0x0C` | `2` | no |
-| `hdr` | `ToggleHDR()` | `0x0C` | `1` | no |
-| `lock` | `ControlPhotoRecord(MOTION_LOCK_MODE)` | `0x0C` | `3` | no |
-| `follow` | `ControlPhotoRecord(MOTION_FOLLOW_MODE)` | `0x0C` | `4` | no |
-| `fpv` | `ControlPhotoRecord(MOTION_FPV_MODE)` | `0x0C` | `5` | no |
-| `video-hdmi` | `ControlPhotoRecord(VIDEO_OUTPUT_HDMI)` | `0x0C` | `6` | no |
-| `video-cvbs` | `ControlPhotoRecord(VIDEO_OUTPUT_CVBS)` | `0x0C` | `7` | no |
-| `video-off` | `ControlPhotoRecord(VIDEO_OUTPUT_OFF)` | `0x0C` | `8` | no |
-
-Notes:
-- `focus` allow to choose the area using x, y. byte value ok go from 0 to 4.
-
-
-## Telemetry Matrix (TM)
-
-Typed decode currently supports:
-
-| CMD_ID | Typed Message | Payload Length |
-|---:|---|---:|
-| `0x0A` | `TM::GimbalConfigurationTM` | 7 bytes |
-| `0x0D` | `TM::GimbalAttitudeTM` | 12 bytes |
-
 ## Demo App Usage
 
 Build:

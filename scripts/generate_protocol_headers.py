@@ -396,7 +396,7 @@ def main() -> int:
     tm_data = _load_yaml(tm_yaml_path)
 
     out_cmd.write_text(_render_cmd_parameter(tc_data), encoding="utf-8")
-    out_tm.write_text(_render_tm_parameter(tm_data), encoding="utf-8")s
+    out_tm.write_text(_render_tm_parameter(tm_data), encoding="utf-8")
 
     print(f"Generated: {out_cmd}")
     print(f"Generated: {out_tm}")
