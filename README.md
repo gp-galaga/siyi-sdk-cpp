@@ -94,17 +94,18 @@ cmake --build --preset debug --target generate_protocol_headers
 Build:
 
 ```bash
-cmake --preset debug
-cmake --build --preset debug --target siyi_demo
+mkdir -p build && cd build
+cmake ..
+cmake --build ..
 ```
 
 Run examples:
 
 ```bash
-./out/build/debug/siyi_demo 192.168.144.25 37260 acquire-fw-ver
-./out/build/debug/siyi_demo 192.168.144.25 37260 set-utc-time 1715072000000000
-./out/build/debug/siyi_demo 192.168.144.25 37260 auto-focus 1 2
-./out/build/debug/siyi_demo 192.168.144.25 37260 soft-restart 1 0
+./siyi_demo 192.168.144.25 37260 acquire-fw-ver
+./siyi_demo 192.168.144.25 37260 set-utc-time 1715072000000000
+./siyi_demo 192.168.144.25 37260 auto-focus 1 2
+./siyi_demo 192.168.144.25 37260 soft-restart 1 0
 ```
 
 ## Integration Tests with Real Camera

@@ -33,6 +33,8 @@ commands:
     value: 0x0C
   - name: ACQUIRE_GIMBAL_ATT
     value: 0x0D
+  - name: SET_GIMBAL_ANGLE
+    value: 0x0E
   - name: ABSOLUTE_ZOOM
     value: 0x0F
   - name: SET_UTC_TIME

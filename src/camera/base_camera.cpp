@@ -380,6 +380,27 @@ namespace SIYI
             return true;
         }
 
+        if (packet.cmdId == static_cast<uint8_t>(CommandId::SET_GIMBAL_ANGLE))
+        {
+            constexpr size_t kExpectedLen = 6;
+            if (packet.data.size() != kExpectedLen)
+            {
+                if (error != nullptr)
+                {
+                    *error = "SET_GIMBAL_ANGLE payload must be exactly 6 bytes";
+                }
+                return false;
+            }
+
+            TM::SetGimbalAngleAck ack;
+            ack.currentYawAngle = CRC16::ReadI16Le(packet.data, 0);
+            ack.currentPitchAngle = CRC16::ReadI16Le(packet.data, 2);
+            ack.currentRollAngle = CRC16::ReadI16Le(packet.data, 4);
+
+            outMessage = ack;
+            return true;
+        }
+
         if (error != nullptr)
         {
             *error = "unsupported telemetry cmd_id for typed decoding";

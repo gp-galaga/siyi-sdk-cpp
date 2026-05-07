@@ -3,6 +3,7 @@
 
 #include <arpa/inet.h>
 #include <cerrno>
+#include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -37,6 +38,8 @@ namespace
             << "  auto-focus [x_coord] [y_coord]\n"
             << "  center\n"
             << "  absolute-zoom <value>\n"
+            << "   <yaw> <pitch>\n"
+            << "  set-gimbal-angle <yaw> <pitch> # don't forget to multiply by 10 your desired angle value\n"
             << "  set-utc-time <uint64>\n"
             << "  soft-restart [camera_reboot:0|1] [gimbal_reset:0|1]\n" 
             << "  lock\n"
@@ -75,6 +78,19 @@ namespace
             return false;
         }
         outValue = static_cast<uint16_t>(parsed);
+        return true;
+    }
+
+    bool ParseInt16(const std::string& value, int16_t& outValue)
+    {
+        char* end = nullptr;
+        errno = 0;
+        const long parsed = std::strtol(value.c_str(), &end, 10);
+        if (errno != 0 || end == value.c_str() || *end != '\0' || parsed < -32768L || parsed > 32767L)
+        {
+            return false;
+        }
+        outValue = static_cast<int16_t>(parsed);
         return true;
     }
 
@@ -231,13 +247,39 @@ namespace
             }
 
             float zoomValue = 0.0F;
-            if (!ParseFloat(args[1], zoomValue) || zoomValue < 0.0F || zoomValue > 255.9F)
+            if (!ParseFloat(args[1], zoomValue) || zoomValue < 1.0F || zoomValue > 30.9F)
             {
-                std::cerr << "invalid absolute-zoom value: " << args[1] << "\n";
+                std::cerr << "invalid absolute-zoom value: " << args[1] << " (expected range 1.0 to 30.9)\n";
+                return std::nullopt;
+            }
+
+            const float scaled = zoomValue * 10.0F;
+            const int scaledInt = static_cast<int>(scaled + 0.5F);
+            if (std::abs(scaled - static_cast<float>(scaledInt)) > 0.001F)
+            {
+                std::cerr << "invalid absolute-zoom value: " << args[1] << " (expected a single decimal digit)\n";
                 return std::nullopt;
             }
 
             return camera.SetAbsoluteZoom(zoomValue, needAck);
+        }
+        if (command == "set-gimbal-angle")
+        {
+            if (args.size() < 3)
+            {
+                std::cerr << "set-gimbal-angle requires two arguments: <yaw> <pitch>\n";
+                return std::nullopt;
+            }
+
+            int16_t yaw = 0;
+            int16_t pitch = 0;
+            if (!ParseInt16(args[1], yaw) || !ParseInt16(args[2], pitch))
+            {
+                std::cerr << "invalid set-gimbal-angle arguments\n";
+                return std::nullopt;
+            }
+
+            return camera.SetGimbalAngle(yaw, pitch, needAck);
         }
         if (command == "set-utc-time")
         {
@@ -522,6 +564,11 @@ int main(int argc, char** argv)
                         std::cout << "  data: " << SIYI::BytesToHex(decoded.data) << "\n";
                     }
 
+                    if (decoded.cmdId == static_cast<uint8_t>(SIYI::CommandId::SET_GIMBAL_ANGLE))
+                    {
+                        std::cout << "  ack_name: SetGimbalAngleAck\n";
+                    }
+
                     SIYI::TM::TelemetryMessage tmMessage;
                     if (camera.DecodeTelemetryPacket(decoded, tmMessage, &error))
                     {
@@ -545,6 +592,13 @@ int main(int argc, char** argv)
                             std::cout << "  gimbal_motion_mode: " << static_cast<unsigned int>(info->gimbalMotionMode) << "\n";
                             std::cout << "  gimbal_mounting_method: " << static_cast<unsigned int>(info->gimbalMountingMethod) << "\n";
                             std::cout << "  video_hdmi_or_cvbs: " << static_cast<unsigned int>(info->video_hdmi_or_cvbs) << "\n";
+                        }
+                        else if (const auto* ack = std::get_if<SIYI::TM::SetGimbalAngleAck>(&tmMessage); ack != nullptr)
+                        {
+                            std::cout << "Decoded typed telemetry (SetGimbalAngleAck):\n";
+                            std::cout << "  currentYawAngle: " << ack->currentYawAngle << " (" << ack->YawDeg() << " deg)\n";
+                            std::cout << "  currentPitchAngle: " << ack->currentPitchAngle << " (" << ack->PitchDeg() << " deg)\n";
+                            std::cout << "  currentRollAngle: " << ack->currentRollAngle << " (" << ack->RollDeg() << " deg)\n";
                         }
                     }
                 }

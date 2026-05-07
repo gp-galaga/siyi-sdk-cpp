@@ -61,6 +61,22 @@ namespace SIYI
                 int8_t pitchSpeed,
                 bool needAck = true) const override;
 
+            std::vector<uint8_t> SetGimbalAngle(
+                int16_t yaw,
+                int16_t pitch,
+                bool needAck = true) const override
+            {
+                const std::vector<uint8_t> payload = {
+                    static_cast<uint8_t>(yaw & 0xFF),
+                    static_cast<uint8_t>((yaw >> 8) & 0xFF),
+                    static_cast<uint8_t>(pitch & 0xFF),
+                    static_cast<uint8_t>((pitch >> 8) & 0xFF)};
+                return BuildPacket(
+                    static_cast<uint8_t>(CommandId::SET_GIMBAL_ANGLE),
+                    payload,
+                    needAck ? ControlFlag::NEED_ACK : ControlFlag::NO_ACK);
+            }
+
             std::vector<uint8_t> StopRotation(
                 bool needAck = false) const override;
 
@@ -176,8 +192,21 @@ namespace SIYI
 
             std::vector<uint8_t> SetAbsoluteZoom(float zoomSpeed) const
             {
+                if (zoomSpeed < 1.0F)
+                {
+                    zoomSpeed = 1.0F;
+                }
+                if (zoomSpeed > 30.9F)
+                {
+                    zoomSpeed = 30.9F;
+                }
+
                 uint8_t intPart = static_cast<uint8_t>(zoomSpeed);
-                uint8_t fracPart = static_cast<uint8_t>((zoomSpeed - intPart) * 10);
+                uint8_t fracPart = static_cast<uint8_t>((zoomSpeed - static_cast<float>(intPart)) * 10.0F + 0.5F);
+                if (fracPart > 9)
+                {
+                    fracPart = 9;
+                }
                 return SetAbsoluteZoom(intPart, fracPart);
             }
 

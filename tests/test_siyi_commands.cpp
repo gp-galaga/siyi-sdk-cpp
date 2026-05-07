@@ -160,7 +160,7 @@ namespace SIYI
             const auto hwFrame = camera.AcquireHardwareId();
             const auto autoFocusFrame = camera.AutoFocus(100, 200);
             const auto centerFrame = camera.Center();
-            const auto absoluteZoomFrame = camera.SetAbsoluteZoom(12.3F);
+            const auto absoluteZoomFrame = camera.SetAbsoluteZoom(4.5F);
             const auto softRestartFrame = camera.SoftRestart(true, false);
 
             SIYIPacket fwPacket;
@@ -195,7 +195,7 @@ namespace SIYI
 
             CHECK(absoluteZoomPacket.ctrl == static_cast<uint8_t>(ControlFlag::NEED_ACK));
             CHECK(absoluteZoomPacket.cmdId == static_cast<uint8_t>(CommandId::ABSOLUTE_ZOOM));
-            CHECK(absoluteZoomPacket.data == std::vector<uint8_t>({12, 3}));
+            CHECK(absoluteZoomPacket.data == std::vector<uint8_t>({0x04, 0x05}));
 
             CHECK(softRestartPacket.ctrl == static_cast<uint8_t>(ControlFlag::NEED_ACK));
             CHECK(softRestartPacket.cmdId == static_cast<uint8_t>(CommandId::SOFT_RESTART));
@@ -232,6 +232,21 @@ namespace SIYI
             CHECK(packet.cmdId == static_cast<uint8_t>(CommandId::SET_UTC_TIME));
             REQUIRE(packet.data.size() == 8);
             CHECK(packet.data == std::vector<uint8_t>({0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01}));
+        }
+
+        TEST_CASE("SetGimbalAngle encodes yaw/pitch payload and ACK control")
+        {
+            ZR30 camera;
+
+            const auto frame = camera.SetGimbalAngle(1000, -2000, true);
+
+            SIYIPacket packet;
+            REQUIRE(camera.DecodeFrame(frame, packet));
+
+            CHECK(packet.ctrl == static_cast<uint8_t>(ControlFlag::NEED_ACK));
+            CHECK(packet.cmdId == static_cast<uint8_t>(CommandId::SET_GIMBAL_ANGLE));
+            REQUIRE(packet.data.size() == 4);
+            CHECK(packet.data == std::vector<uint8_t>({0xE8, 0x03, 0x30, 0xF8}));
         }
 
         TEST_CASE("SoftRestart encodes expected payload")
@@ -332,6 +347,35 @@ namespace SIYI
             std::string error;
             CHECK_FALSE(camera.DecodeTelemetryPacket(packet, message, &error));
             CHECK(error.find("7 bytes") != std::string::npos);
+        }
+
+        TEST_CASE("Decode typed SetGimbalAngleAck telemetry")
+        {
+            ZR30 camera;
+
+            SIYIPacket packet;
+            packet.ctrl = MakeDeviceAckControlByte();
+            packet.seq = 21;
+            packet.cmdId = static_cast<uint8_t>(CommandId::SET_GIMBAL_ANGLE);
+            packet.data = {
+                0x64, 0x00, // currentYawAngle = 100
+                0x9C, 0xFF, // currentPitchAngle = -100
+                0x00, 0x00  // currentRollAngle = 0
+            };
+            packet.dataLen = static_cast<uint16_t>(packet.data.size());
+
+            TM::TelemetryMessage message;
+            std::string error;
+            REQUIRE(camera.DecodeTelemetryPacket(packet, message, &error));
+
+            const auto* ack = std::get_if<TM::SetGimbalAngleAck>(&message);
+            REQUIRE(ack != nullptr);
+            CHECK(ack->currentYawAngle == 100);
+            CHECK(ack->currentPitchAngle == -100);
+            CHECK(ack->currentRollAngle == 0);
+            CHECK(ack->YawDeg() == doctest::Approx(10.0));
+            CHECK(ack->PitchDeg() == doctest::Approx(-10.0));
+            CHECK(ack->RollDeg() == doctest::Approx(0.0));
         }
 
         TEST_CASE("Enum helper method maps raw value to enum")

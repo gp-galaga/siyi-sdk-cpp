@@ -98,3 +98,24 @@ typed_messages:
         type: uint8
         enum_type: gimbal_working_modes
         enum_helper: AsGimbalWorkingMode
+  
+  - name: SetGimbalAngleAck
+    cmd_id: SET_GIMBAL_ANGLE
+    payload_len: 6
+    fields:
+      - name: currentYawAngle
+        type: int16_le
+        scale: 0.1
+        unit: deg
+        helper: YawDeg
+      - name: currentPitchAngle
+        type: int16_le
+        scale: 0.1
+        unit: deg
+        helper: PitchDeg
+      - name: currentRollAngle
+        type: int16_le
+        scale: 0.1
+        unit: deg
+        helper: RollDeg
+      

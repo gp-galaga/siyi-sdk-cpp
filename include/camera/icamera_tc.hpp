@@ -60,6 +60,11 @@ namespace SIYI
             int8_t pitchSpeed,
             bool needAck = false) const = 0;
 
+        virtual std::vector<uint8_t> SetGimbalAngle(
+            int16_t yaw,
+            int16_t pitch,
+            bool needAck = true) const = 0;
+
         virtual std::vector<uint8_t> StopRotation(
             bool needAck = false) const = 0;
 
