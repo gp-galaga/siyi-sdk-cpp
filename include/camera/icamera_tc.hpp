@@ -1,8 +1,8 @@
 #ifndef SIYI_I_CAMERA_TC_HPP
 #define SIYI_I_CAMERA_TC_HPP
 
-#include "enum/tc_parameter.hpp"
-#include "enum/tm_parameters.hpp"
+#include "protocol/tc_parameter.hpp"
+#include "protocol/tm_parameters.hpp"
 
 #include <atomic>
 #include <cstdint>

@@ -2,8 +2,8 @@
 """Generate protocol headers from YAML definitions.
 
 This script updates:
-    - include/camera/enum/cmd_parameter.hpp (from protocol/tc/definitions.yaml)
-    - include/camera/enum/tm_parameters.hpp  (from protocol/tm/definitions.yaml)
+    - include/camera/protocol/cmd_parameter.hpp (from protocol/tc/definitions.yaml)
+    - include/camera/protocol/tm_parameters.hpp  (from protocol/tm/definitions.yaml)
 """
 
 from __future__ import annotations
@@ -389,14 +389,14 @@ def main() -> int:
     root = Path(args.root).resolve()
     tc_yaml_path = root / "protocol" / "tc" / "definitions.yaml"
     tm_yaml_path = root / "protocol" / "tm" / "definitions.yaml"
-    out_cmd = root / "include" / "camera" / "enum" / "tc_parameter.hpp"
-    out_tm = root / "include" / "camera" / "enum" / "tm_parameters.hpp"
+    out_cmd = root / "include" / "camera" / "protocol" / "tc_parameter.hpp"
+    out_tm = root / "include" / "camera" / "protocol" / "tm_parameters.hpp"
 
     tc_data = _load_yaml(tc_yaml_path)
     tm_data = _load_yaml(tm_yaml_path)
 
     out_cmd.write_text(_render_cmd_parameter(tc_data), encoding="utf-8")
-    out_tm.write_text(_render_tm_parameter(tm_data), encoding="utf-8")
+    out_tm.write_text(_render_tm_parameter(tm_data), encoding="utf-8")s
 
     print(f"Generated: {out_cmd}")
     print(f"Generated: {out_tm}")
