@@ -95,6 +95,7 @@ namespace
     {
         char* end = nullptr;
         errno = 0;
+
         const unsigned long long parsed = std::strtoull(value.c_str(), &end, 10);
         if (errno != 0 || end == value.c_str() || *end != '\0')
         {
@@ -524,7 +525,7 @@ int main(int argc, char** argv)
                     SIYI::TM::TelemetryMessage tmMessage;
                     if (camera.DecodeTelemetryPacket(decoded, tmMessage, &error))
                     {
-                        if (const auto* att = std::get_if<SIYI::TM::GimbalAttitudeTM>(&tmMessage); att != nullptr)
+                        if (const auto* att = std::get_if<SIYI::TM::GimbalAttitude>(&tmMessage); att != nullptr)
                         {
                             std::cout << "Decoded typed telemetry (Gimbal Attitude):\n";
                             std::cout << "  yaw: " << att->yaw << " (" << att->YawDeg() << " deg)\n";
@@ -534,7 +535,7 @@ int main(int argc, char** argv)
                             std::cout << "  pitch_velocity: " << att->pitchVelocity << " (" << att->PitchVelocityDegPerSec() << " deg/s)\n";
                             std::cout << "  roll_velocity: " << att->rollVelocity << " (" << att->RollVelocityDegPerSec() << " deg/s)\n";
                         }
-                        else if (const auto* info = std::get_if<SIYI::TM::GimbalConfigurationTM>(&tmMessage); info != nullptr)
+                        else if (const auto* info = std::get_if<SIYI::TM::GimbalConfiguration>(&tmMessage); info != nullptr)
                         {
                             std::cout << "Decoded typed telemetry (Gimbal Configuration):\n";
                             std::cout << "  reserved0: " << static_cast<unsigned int>(info->reserved0) << "\n";

@@ -4,6 +4,17 @@ project(SIYI_SDK_CPP CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+find_package(Python3 COMPONENTS Interpreter QUIET)
+
+if(Python3_Interpreter_FOUND)
+    add_custom_target(generate_protocol_headers
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/generate_protocol_headers.py --root ${CMAKE_CURRENT_SOURCE_DIR}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+            COMMENT "Generating protocol headers from protocol/tc/definitions.yaml and protocol/tm/definitions.yaml")
+else()
+    message(WARNING "Python3 not found: 'generate_protocol_headers' target is unavailable.")
+endif()
+
 # Main library sources
 set(SIYI_SOURCES
     src/camera/base_camera.cpp

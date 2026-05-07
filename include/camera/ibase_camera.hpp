@@ -101,14 +101,6 @@ namespace SIYI
                     payload,
                     needAck ? ControlFlag::NEED_ACK : ControlFlag::NO_ACK);
             }
-            
-        // ACQUIRE_FW_VER = 0x01,
-        // ACQUIRE_HW_ID = 0x02,
-        // AUTO_FOCUS = 0x04,
-        // CENTER = 0x08,
-        // ACQUIRE_GIMBAL_CONFIGURATION = 0x0a,
-        // FUNC_FEEDBACK_INFO = 0x0b,
-        // ABSOLUTE_ZOOM = 0x0f,
 
             std::vector<uint8_t> AcquireFirmwareVersion() const
             {
@@ -158,7 +150,6 @@ namespace SIYI
                     ControlFlag::NEED_ACK);
             }
 
-            // # for tm, must devide the value by 10 to get degree value
             std::vector<uint8_t> AcquireGimbalAttitude() const
             {
                 return BuildPacket(

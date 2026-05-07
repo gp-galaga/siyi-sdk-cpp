@@ -271,7 +271,7 @@ namespace SIYI
             std::string error;
             REQUIRE(camera.DecodeTelemetryPacket(packet, message, &error));
 
-            const auto* att = std::get_if<TM::GimbalAttitudeTM>(&message);
+            const auto* att = std::get_if<TM::GimbalAttitude>(&message);
             REQUIRE(att != nullptr);
             CHECK(att->yaw == 123);
             CHECK(att->pitch == -50);
@@ -307,7 +307,7 @@ namespace SIYI
             std::string error;
             REQUIRE(camera.DecodeTelemetryPacket(packet, message, &error));
 
-            const auto* config = std::get_if<TM::GimbalConfigurationTM>(&message);
+            const auto* config = std::get_if<TM::GimbalConfiguration>(&message);
             REQUIRE(config != nullptr);
             CHECK(config->reserved0 == 0x00);
             CHECK(config->hdrStatus == 0x01);
@@ -332,6 +332,27 @@ namespace SIYI
             std::string error;
             CHECK_FALSE(camera.DecodeTelemetryPacket(packet, message, &error));
             CHECK(error.find("7 bytes") != std::string::npos);
+        }
+
+        TEST_CASE("Enum helper method maps raw value to enum")
+        {
+            TM::GimbalWorkingMode mode{};
+            mode.gimbalWorkingMode = 1;
+
+            CHECK(mode.AsGimbalWorkingMode() == TM::GimbalWorkingModeEnum::FOLLOW_MODE);
+        }
+
+        TEST_CASE("TC metadata reports command scope and camera support")
+        {
+            CHECK(GetCommandScope(CommandId::AUTO_FOCUS) == CommandScope::ZOOM_CAMERA);
+            CHECK(GetCommandScope(CommandId::ACQUIRE_FW_VER) == CommandScope::COMMON);
+
+            CHECK(IsCommandSupportedByCamera(CommandId::AUTO_FOCUS, CameraModel::ZR10));
+            CHECK(IsCommandSupportedByCamera(CommandId::AUTO_FOCUS, CameraModel::ZR30));
+            CHECK(IsCommandSupportedByCamera(CommandId::AUTO_FOCUS, CameraModel::ZT30));
+            CHECK_FALSE(IsCommandSupportedByCamera(CommandId::AUTO_FOCUS, CameraModel::A8_MINI));
+
+            CHECK(IsCommandSupportedByCamera(CommandId::CENTER, CameraModel::A8_MINI));
         }
     }
 } // namespace SIYI

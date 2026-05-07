@@ -1,0 +1,100 @@
+command_acknowledgement:
+  - name: ACK_SUCCESS
+    value: 0
+  - name: ACK_FAIL
+    value: 1
+
+gimbal_models:
+  - name: UNKNOWN
+    value: 0x00
+  - name: ZR10
+    value: 0x6B
+  - name: A8_mini
+    value: 0x73
+  - name: A2_mini
+    value: 0x75
+  - name: ZR30
+    value: 0x78
+  - name: ZT30
+    value: 0x7A
+  - name: ZT6
+    value: 0x82
+
+gimbal_working_modes:
+  - name: LOCK_MODE
+    value: 0
+  - name: FOLLOW_MODE
+    value: 1
+  - name: FPV_MODE
+    value: 2
+
+typed_messages:
+  - name: GimbalAttitude
+    cmd_id: ACQUIRE_GIMBAL_ATT
+    payload_len: 12
+    fields:
+      - name: yaw
+        type: int16_le
+        scale: 0.1
+        unit: deg
+        helper: YawDeg
+      - name: pitch
+        type: int16_le
+        scale: 0.1
+        unit: deg
+        helper: PitchDeg
+      - name: roll
+        type: int16_le
+        scale: 0.1
+        unit: deg
+        helper: RollDeg
+      - name: yawVelocity
+        type: int16_le
+        scale: 0.1
+        unit: deg_per_sec
+        helper: YawVelocityDegPerSec
+      - name: pitchVelocity
+        type: int16_le
+        scale: 0.1
+        unit: deg_per_sec
+        helper: PitchVelocityDegPerSec
+      - name: rollVelocity
+        type: int16_le
+        scale: 0.1
+        unit: deg_per_sec
+        helper: RollVelocityDegPerSec
+
+  - name: GimbalConfiguration
+    cmd_id: ACQUIRE_GIMBAL_CONFIGURATION
+    payload_len: 7
+    fields:
+      - name: reserved0
+        type: uint8
+      - name: hdrStatus
+        type: uint8
+      - name: reserved1
+        type: uint8
+      - name: recordStatus
+        type: uint8
+      - name: gimbalMotionMode
+        type: uint8
+      - name: gimbalMountingMethod
+        type: uint8
+      - name: video_hdmi_or_cvbs
+        type: uint8
+
+  - name: GimbalHardwareId
+    cmd_id: ACQUIRE_HW_ID
+    payload_len: 1
+    fields:
+      - name: gimbalModel
+        type: uint8
+
+  - name: GimbalWorkingMode
+    cmd_id: ACQUIRE_WORKING_MODE
+    payload_len: 1
+    fields:
+      - name: gimbalWorkingMode
+        type: uint8
+        enum_type: gimbal_working_modes
+        enum_helper: AsGimbalWorkingMode

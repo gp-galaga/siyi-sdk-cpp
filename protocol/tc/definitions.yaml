@@ -1,0 +1,87 @@
+control_flags:
+  - name: NO_ACK
+    value: 0x00
+  - name: NEED_ACK
+    value: 0x01
+  - name: ACK
+    value: 0x02
+
+commands:
+  - name: TCP_HEARTBEAT
+    value: 0x00
+  - name: ACQUIRE_FW_VER
+    value: 0x01
+  - name: ACQUIRE_HW_ID
+    value: 0x02
+  - name: ACQUIRE_WORKING_MODE
+    value: 0x03
+  - name: AUTO_FOCUS
+    value: 0x04
+  - name: ZOOM
+    value: 0x05
+  - name: MANUAL_FOCUS
+    value: 0x06
+  - name: ROTATION
+    value: 0x07
+  - name: CENTER
+    value: 0x08
+  - name: ACQUIRE_GIMBAL_CONFIGURATION
+    value: 0x0A
+  - name: FUNC_FEEDBACK_INFO
+    value: 0x0B
+  - name: PHOTO_RECORD
+    value: 0x0C
+  - name: ACQUIRE_GIMBAL_ATT
+    value: 0x0D
+  - name: ABSOLUTE_ZOOM
+    value: 0x0F
+  - name: SET_UTC_TIME
+    value: 0x30
+  - name: SOFT_RESTART
+    value: 0x80
+  
+
+photo_record_functions:
+  - name: TAKE_PICTURE
+    value: 0
+  - name: TOGGLE_HDR
+    value: 1
+  - name: START_STOP_RECORDING
+    value: 2
+  - name: MOTION_LOCK_MODE
+    value: 3
+  - name: MOTION_FOLLOW_MODE
+    value: 4
+  - name: MOTION_FPV_MODE
+    value: 5
+  - name: VIDEO_OUTPUT_HDMI
+    value: 6
+  - name: VIDEO_OUTPUT_CVBS
+    value: 7
+  - name: VIDEO_OUTPUT_OFF
+    value: 8
+
+manual_zoom_directions:
+  - name: STOP
+    value: 0
+  - name: ZOOM_IN
+    value: 1
+  - name: ZOOM_OUT
+    value: -1
+
+camera_models:
+  - name: UNKNOWN
+  - name: ZR10
+  - name: A8_MINI
+  - name: A2_MINI
+  - name: ZR30
+  - name: ZT30
+  - name: ZT6
+
+command_metadata:
+  - cmd: AUTO_FOCUS
+    scope: ZOOM_CAMERA
+    supported_models: [ZR10, ZR30, ZT30]
+  - cmd: ABSOLUTE_ZOOM
+    scope: ZOOM_CAMERA
+    supported_models: [ZR10, ZR30, ZT30]

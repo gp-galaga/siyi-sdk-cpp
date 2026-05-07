@@ -31,6 +31,8 @@ ctest --preset debug
 
 ## Project Layout
 
+- `protocol/tc/definitions.yaml`: source-of-truth for telecommand (TC) enums and IDs
+- `protocol/tm/definitions.yaml`: source-of-truth for telemetry (TM) enums, message IDs, and typed payload fields
 - `include/camera/enum/cmd_parameter.hpp`: command IDs and control flags
 - `include/camera/enum/tm_parameters.hpp`: typed telemetry models
 - `include/camera/icamera_tc.hpp`: camera/session interface
@@ -41,7 +43,51 @@ ctest --preset debug
 - `apps/main.cpp`: UDP demo app
 - `tests/test_siyi_commands.cpp`: unit tests
 - `scripts/run_tests.sh`: test helper script
+- `scripts/generate_protocol_headers.py`: generates enum headers from YAML
 - `scripts/export_tc_tm.sh`: export TC/TM matrix for release
+
+## Protocol Definitions as YAML
+
+Command and telemetry definitions are maintained in:
+
+- `protocol/tc/definitions.yaml`
+- `protocol/tm/definitions.yaml`
+
+`protocol/tm/definitions.yaml` defines each TM packet using:
+
+- `cmd_id`: telemetry command identifier
+- `payload_len`: expected payload size in bytes
+- `fields`: ordered list of `name` + `type` entries (for byte layout)
+
+Optional per-field metadata:
+
+- `scale`: numeric multiplier applied to raw field value
+- `offset`: numeric offset added after scaling
+- `helper`: generated C++ helper method name returning `double`
+- `enum_type`: references a TM enum collection key (for example `gimbal_working_modes`)
+- `enum_helper`: generated C++ helper method name returning the enum type
+- `unit`: descriptive unit string for schema readability (not used in code generation)
+
+Supported TM field types in the generator are: `uint8`, `int8`, `uint16_le`, `int16_le`, `uint32_le`, `int32_le`, `uint64_le`, `int64_le`.
+
+The following headers are generated from these YAML files:
+
+- `include/camera/enum/cmd_parameter.hpp`
+- `include/camera/enum/tm_parameters.hpp`
+
+Do not edit those generated headers manually.
+
+Regenerate with script:
+
+```bash
+./scripts/generate_protocol_headers.py
+```
+
+Or via CMake target:
+
+```bash
+cmake --build --preset debug --target generate_protocol_headers
+```
 
 ## Implemented Command Matrix (TC)
 
@@ -70,8 +116,8 @@ ctest --preset debug
 | `video-off` | `ControlPhotoRecord(VIDEO_OUTPUT_OFF)` | `0x0C` | `8` | no |
 
 Notes:
-- `zoom` uses command ID `0x05` (`ZOOM`) and supports optional ACK behavior.
-- `absolute-zoom` uses command ID `0x0F` (`ABSOLUTE_ZOOM`) and is ACK.
+- `focus` allow to choose the area using x, y. byte value ok go from 0 to 4.
+
 
 ## Telemetry Matrix (TM)
 
@@ -96,7 +142,7 @@ Run examples:
 ```bash
 ./out/build/debug/siyi_demo 192.168.144.25 37260 acquire-fw-ver
 ./out/build/debug/siyi_demo 192.168.144.25 37260 set-utc-time 1715072000000000
-./out/build/debug/siyi_demo 192.168.144.25 37260 auto-focus 100 200
+./out/build/debug/siyi_demo 192.168.144.25 37260 auto-focus 1 2
 ./out/build/debug/siyi_demo 192.168.144.25 37260 soft-restart 1 0
 ```
 
@@ -133,23 +179,12 @@ ping 192.168.144.25
 On bridge PC:
 
 ```bash
-# Replace user with your user on the bridge PC.
-ssh -L 37260:192.168.144.25:37260 user@192.168.1.14
-
-sudo sysctl -w net.ipv4.ip_forward=1
-sudo tcpdump -i any port 37260
-```
-
-If forwarding still fails, configure NAT/forward rules on the bridge PC:
-
-```bash
-# Identify interface names first.
-ip a
-
 # Example interface names only, adapt to your machine.
 sudo iptables -A FORWARD -i wlP1p1s0 -o enP8p1s0 -j ACCEPT
 sudo iptables -A FORWARD -i enP8p1s0 -o wlP1p1s0 -m state --state ESTABLISHED,RELATED -j ACCEPT
 sudo iptables -t nat -A POSTROUTING -o enP8p1s0 -j MASQUERADE
+sudo sysctl -w net.ipv4.ip_forward=1
+sudo tcpdump -i any port 37260
 ```
 
 After routing is set, validate behavior with a feedback-producing command such as `picture` or `acquire-gimbal-att`.

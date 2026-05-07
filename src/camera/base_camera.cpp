@@ -343,7 +343,7 @@ namespace SIYI
                 return false;
             }
             
-            TM::GimbalConfigurationTM config;
+            TM::GimbalConfiguration config;
             config.reserved0 = packet.data[0];
             config.hdrStatus = packet.data[1];
             config.reserved1 = packet.data[2];
@@ -368,7 +368,7 @@ namespace SIYI
                 return false;
             }
 
-            TM::GimbalAttitudeTM attitude;
+            TM::GimbalAttitude attitude;
             attitude.yaw = CRC16::ReadI16Le(packet.data, 0);
             attitude.pitch = CRC16::ReadI16Le(packet.data, 2);
             attitude.roll = CRC16::ReadI16Le(packet.data, 4);
