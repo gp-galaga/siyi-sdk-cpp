@@ -24,10 +24,10 @@ namespace SIYI
         {
             ZR30 camera;
 
-            const auto rotateFrameAck = camera.StartRotation(100, 100, true);
-            const auto rotateFrameNoAck = camera.StartRotation(100, 100, false);
-            const auto zoomFrameAck = camera.SetAbsoluteZoom(3, true);
-            const auto zoomFrameNoAck = camera.SetAbsoluteZoom(3, false);
+            const auto rotateFrameAck = camera.StartRotation(100, 100);
+            const auto rotateFrameNoAck = camera.StartRotation(100, 100);
+            const auto zoomFrameAck = camera.SetAbsoluteZoom(3);
+            const auto zoomFrameNoAck = camera.SetAbsoluteZoom(3);
 
             SIYIPacket rotateAck;
             SIYIPacket rotateNoAck;
@@ -238,7 +238,7 @@ namespace SIYI
         {
             ZR30 camera;
 
-            const auto frame = camera.SetGimbalAngle(1000, -2000, true);
+            const auto frame = camera.SetGimbalAngle(1000, -2000);
 
             SIYIPacket packet;
             REQUIRE(camera.DecodeFrame(frame, packet));

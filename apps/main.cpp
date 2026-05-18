@@ -148,7 +148,7 @@ namespace
         const std::string& command = args[0];
         if (command == "stop-rotation")
         {
-            return camera.StopRotation(needAck);
+            return camera.StopRotation();
         }
         if (command == "acquire-gimbal-att")
         {
@@ -315,7 +315,7 @@ namespace
                 return std::nullopt;
             }
 
-            return camera.SetGimbalAngle(yaw, pitch, needAck);
+            return camera.SetGimbalAngle(yaw, pitch);
         }
         if (command == "set-utc-time")
         {
@@ -377,7 +377,11 @@ namespace
                 std::cerr << "invalid rotate arguments\n";
                 return std::nullopt;
             }
-            return camera.StartRotation(yawSpeed, pitchSpeed, needAck);
+            return camera.StartRotation(yawSpeed, pitchSpeed);
+        }
+        if(command == "feedback-info")
+        {
+            return camera.AcquireFunctionFeedbackInfo();
         }
 
 

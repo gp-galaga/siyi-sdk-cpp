@@ -48,21 +48,17 @@ namespace SIYI
         virtual ~ITCCamera() = default;
         
         virtual std::vector<uint8_t> SetManualZoom(
-            ManualZoomDirection direction,
-            bool needAck = false) const = 0;
+            ManualZoomDirection direction) const = 0;
 
         virtual std::vector<uint8_t> StartRotation(
             int8_t yawSpeed,
-            int8_t pitchSpeed,
-            bool needAck = false) const = 0;
+            int8_t pitchSpeed) const = 0;
 
         virtual std::vector<uint8_t> SetGimbalAngle(
             int16_t yaw,
-            int16_t pitch,
-            bool needAck = true) const = 0;
+            int16_t pitch) const = 0;
 
-        virtual std::vector<uint8_t> StopRotation(
-            bool needAck = false) const = 0;
+        virtual std::vector<uint8_t> StopRotation() const = 0;
 
         virtual std::vector<uint8_t> ControlPhotoRecord(
             PhotoRecordFunction funcType) const = 0;
@@ -70,7 +66,7 @@ namespace SIYI
         virtual std::vector<uint8_t> BuildCustomCommand(
             uint8_t cmdId,
             const std::vector<uint8_t>& payload,
-            bool needAck = false) const = 0;
+            bool needAck) const = 0;
 
         virtual bool DecodeFrame(
             const std::vector<uint8_t>& frame,

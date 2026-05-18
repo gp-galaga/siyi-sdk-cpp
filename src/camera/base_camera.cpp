@@ -44,19 +44,19 @@ namespace SIYI
             0xEF1F, 0xFF3E, 0xCF5D, 0xDF7C, 0xAF9B, 0xBFBA, 0x8FD9, 0x9FF8,
             0x6E17, 0x7E36, 0x4E55, 0x5E74, 0x2E93, 0x3EB2, 0x0ED1, 0x1EF0};
 
-        uint16_t ReadU16Le(const std::vector<uint8_t>& data, size_t index)
+        uint16_t ReadU16Le(const std::vector<uint8_t> &data, size_t index)
         {
             return static_cast<uint16_t>(data[index]) |
                    static_cast<uint16_t>(data[index + 1] << 8);
         }
 
-        void PushU16Le(std::vector<uint8_t>& data, uint16_t value)
+        void PushU16Le(std::vector<uint8_t> &data, uint16_t value)
         {
             data.push_back(static_cast<uint8_t>(value & 0xFF));
             data.push_back(static_cast<uint8_t>((value >> 8) & 0xFF));
         }
 
-        int16_t ReadI16Le(const std::vector<uint8_t>& data, size_t index)
+        int16_t ReadI16Le(const std::vector<uint8_t> &data, size_t index)
         {
             return static_cast<int16_t>(
                 static_cast<uint16_t>(data[index]) |
@@ -69,7 +69,7 @@ namespace SIYI
     {
     }
 
-    uint16_t Crc16Ccitt(const std::vector<uint8_t>& data)
+    uint16_t Crc16Ccitt(const std::vector<uint8_t> &data)
     {
         uint16_t crc = 0x0000;
         for (const uint8_t byte : data)
@@ -80,7 +80,7 @@ namespace SIYI
         return crc;
     }
 
-    std::optional<std::vector<uint8_t>> HexToBytes(const std::string& hex, std::string* error)
+    std::optional<std::vector<uint8_t>> HexToBytes(const std::string &hex, std::string *error)
     {
         std::string clean;
         clean.reserve(hex.size());
@@ -134,7 +134,7 @@ namespace SIYI
         return out;
     }
 
-    std::string BytesToHex(const std::vector<uint8_t>& data)
+    std::string BytesToHex(const std::vector<uint8_t> &data)
     {
         std::ostringstream oss;
         oss << std::uppercase << std::hex << std::setfill('0');
@@ -166,7 +166,7 @@ namespace SIYI
         return out;
     }
 
-    std::optional<SIYIPacket> SIYIPacket::Decode(const std::vector<uint8_t>& frame, std::string* error)
+    std::optional<SIYIPacket> SIYIPacket::Decode(const std::vector<uint8_t> &frame, std::string *error)
     {
         constexpr size_t kMinimumFrameSize = 10U;
         if (frame.size() < kMinimumFrameSize)
@@ -224,7 +224,7 @@ namespace SIYI
 
     std::vector<uint8_t> SIYICameraBase::BuildPacket(
         const uint8_t cmdId,
-        const std::vector<uint8_t>& payload,
+        const std::vector<uint8_t> &payload,
         const ControlFlag flag) const
     {
         SIYIPacket packet;
@@ -236,10 +236,20 @@ namespace SIYI
         return packet.Encode();
     }
 
-    std::vector<uint8_t> SIYICameraBase::StartRotation(
-        const int8_t yawSpeed,
-        const int8_t pitchSpeed,
-        const bool needAck) const
+    std::vector<uint8_t> SIYICameraBase::SetGimbalAngle(int16_t yaw, int16_t pitch) const
+    {
+        const std::vector<uint8_t> payload = {
+            static_cast<uint8_t>(yaw & 0xFF),
+            static_cast<uint8_t>((yaw >> 8) & 0xFF),
+            static_cast<uint8_t>(pitch & 0xFF),
+            static_cast<uint8_t>((pitch >> 8) & 0xFF)};
+        return BuildPacket(
+            static_cast<uint8_t>(CommandId::SET_GIMBAL_ANGLE),
+            payload,
+            ControlFlag::NEED_ACK);
+    }
+
+    std::vector<uint8_t> SIYICameraBase::StartRotation(const int8_t yawSpeed, const int8_t pitchSpeed) const
     {
         const std::vector<uint8_t> payload = {
             static_cast<uint8_t>(yawSpeed),
@@ -247,17 +257,103 @@ namespace SIYI
         return BuildPacket(
             static_cast<uint8_t>(CommandId::ROTATION),
             payload,
-            needAck ? ControlFlag::NEED_ACK : ControlFlag::NO_ACK);
+            ControlFlag::NEED_ACK);
     }
 
-    std::vector<uint8_t> SIYICameraBase::StopRotation(
-        const bool needAck) const
+    std::vector<uint8_t> SIYICameraBase::StopRotation() const
     {
         const std::vector<uint8_t> payload = {0x00, 0x00};
         return BuildPacket(
             static_cast<uint8_t>(CommandId::ROTATION),
             payload,
-            needAck ? ControlFlag::NEED_ACK : ControlFlag::NO_ACK);
+            ControlFlag::NEED_ACK);
+    }
+
+    std::vector<uint8_t> SIYICameraBase::AcquireFirmwareVersion() const
+    {
+        return BuildPacket(
+            static_cast<uint8_t>(CommandId::ACQUIRE_FW_VER),
+            {},
+            ControlFlag::NEED_ACK);
+    }
+
+    std::vector<uint8_t> SIYICameraBase::AcquireHardwareId() const
+    {
+        return BuildPacket(
+            static_cast<uint8_t>(CommandId::ACQUIRE_HW_ID),
+            {},
+            ControlFlag::NEED_ACK);
+    }
+
+    std::vector<uint8_t> SIYICameraBase::Center() const
+    {
+        return BuildPacket(
+            static_cast<uint8_t>(CommandId::CENTER),
+            {0x1},
+            ControlFlag::NEED_ACK);
+    }
+
+    std::vector<uint8_t> SIYICameraBase::AcquireGimbalConfiguration() const
+    {
+        return BuildPacket(
+            static_cast<uint8_t>(CommandId::ACQUIRE_GIMBAL_CONFIGURATION),
+            {},
+            ControlFlag::NEED_ACK);
+    }
+
+    std::vector<uint8_t> SIYICameraBase::AcquireGimbalAttitude() const
+    {
+        return BuildPacket(
+            static_cast<uint8_t>(CommandId::ACQUIRE_GIMBAL_ATT),
+            {},
+            ControlFlag::NEED_ACK);
+    }
+
+    std::vector<uint8_t> SIYICameraBase::AcquireFunctionFeedbackInfo() const
+    {
+        return BuildPacket(
+            static_cast<uint8_t>(CommandId::FUNC_FEEDBACK_INFO),
+            {},
+            ControlFlag::NEED_ACK);
+    }
+
+    std::vector<uint8_t> SIYICameraBase::SetUtcTime(uint64_t unixTimeUs) const
+    {
+        std::vector<uint8_t> payload(8);
+        payload[0] = static_cast<uint8_t>((unixTimeUs >> 0) & 0xFF);
+
+        payload[1] = static_cast<uint8_t>((unixTimeUs >> 8) & 0xFF);
+        payload[2] = static_cast<uint8_t>((unixTimeUs >> 16) & 0xFF);
+        payload[3] = static_cast<uint8_t>((unixTimeUs >> 24) & 0xFF);
+        payload[4] = static_cast<uint8_t>((unixTimeUs >> 32) & 0xFF);
+        payload[5] = static_cast<uint8_t>((unixTimeUs >> 40) & 0xFF);
+        payload[6] = static_cast<uint8_t>((unixTimeUs >> 48) & 0xFF);
+        payload[7] = static_cast<uint8_t>((unixTimeUs >> 56) & 0xFF);
+        return BuildPacket(
+            static_cast<uint8_t>(CommandId::SET_UTC_TIME),
+            payload,
+            ControlFlag::NEED_ACK);
+    }
+
+    std::vector<uint8_t> SIYICameraBase::SetUtcTime(std::chrono::microseconds unixTime) const
+    {
+        return SetUtcTime(static_cast<uint64_t>(unixTime.count()));
+    }
+
+    std::vector<uint8_t> SIYICameraBase::SoftRestart(uint8_t camera_reboot, uint8_t gimbal_reset) const
+    {
+        return BuildPacket(
+            static_cast<uint8_t>(CommandId::SOFT_RESTART),
+            {camera_reboot, gimbal_reset},
+            ControlFlag::NEED_ACK);
+    }
+
+    std::vector<uint8_t> SIYICameraBase::SoftRestart(bool rebootCamera, bool resetGimbal) const
+    {
+        return BuildPacket(
+            static_cast<uint8_t>(CommandId::SOFT_RESTART),
+            {static_cast<uint8_t>(rebootCamera), static_cast<uint8_t>(resetGimbal)},
+            ControlFlag::NEED_ACK);
     }
 
     std::vector<uint8_t> SIYICameraBase::ControlPhotoRecord(
@@ -303,7 +399,7 @@ namespace SIYI
 
     std::vector<uint8_t> SIYICameraBase::BuildCustomCommand(
         const uint8_t cmdId,
-        const std::vector<uint8_t>& payload,
+        const std::vector<uint8_t> &payload,
         const bool needAck) const
     {
         return BuildPacket(
@@ -313,9 +409,9 @@ namespace SIYI
     }
 
     bool SIYICameraBase::DecodeFrame(
-        const std::vector<uint8_t>& frame,
-        SIYIPacket& outPacket,
-        std::string* error) const
+        const std::vector<uint8_t> &frame,
+        SIYIPacket &outPacket,
+        std::string *error) const
     {
         const auto decoded = SIYIPacket::Decode(frame, error);
         if (!decoded.has_value())
@@ -327,9 +423,9 @@ namespace SIYI
     }
 
     bool SIYICameraBase::DecodeTelemetryPacket(
-        const SIYIPacket& packet,
-        TM::TelemetryMessage& outMessage,
-        std::string* error) const
+        const SIYIPacket &packet,
+        TM::TelemetryMessage &outMessage,
+        std::string *error) const
     {
         if (packet.cmdId == static_cast<uint8_t>(CommandId::ACQUIRE_GIMBAL_CONFIGURATION))
         {
@@ -342,7 +438,7 @@ namespace SIYI
                 }
                 return false;
             }
-            
+
             TM::GimbalConfiguration config;
             config.reserved0 = packet.data[0];
             config.hdrStatus = packet.data[1];
@@ -409,9 +505,9 @@ namespace SIYI
     }
 
     bool SIYICameraBase::DecodeTelemetryFrame(
-        const std::vector<uint8_t>& frame,
-        TM::TelemetryMessage& outMessage,
-        std::string* error) const
+        const std::vector<uint8_t> &frame,
+        TM::TelemetryMessage &outMessage,
+        std::string *error) const
     {
         SIYIPacket packet;
         if (!DecodeFrame(frame, packet, error))
