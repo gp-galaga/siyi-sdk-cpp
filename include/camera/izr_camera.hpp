@@ -17,6 +17,16 @@ namespace SIYI
 
         // Example model-specific command wrapper.
         std::vector<uint8_t> SetGimbalFollowMode(bool enabled, bool needAck = false) const;
+
+        std::vector<uint8_t> SetManualFocus(
+            const ManualFocusDirection direction) const
+        {
+            const std::vector<uint8_t> payload = {static_cast<uint8_t>(direction)};
+            return BuildPacket(
+                static_cast<uint8_t>(CommandId::MANUAL_FOCUS),
+                payload,
+                ControlFlag::NEED_ACK);
+        }
     };
 }
 

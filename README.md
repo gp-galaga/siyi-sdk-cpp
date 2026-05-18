@@ -72,7 +72,7 @@ Supported TM field types in the generator are: `uint8`, `int8`, `uint16_le`, `in
 
 The following headers are generated from these YAML files:
 
-- `include/camera/enum/cmd_parameter.hpp`
+- `include/camera/enum/tc_parameter.hpp`
 - `include/camera/enum/tm_parameters.hpp`
 
 Do not edit those generated headers manually.
@@ -96,7 +96,7 @@ Build:
 ```bash
 mkdir -p build && cd build
 cmake ..
-cmake --build ..
+cmake --build .
 ```
 
 Run examples:

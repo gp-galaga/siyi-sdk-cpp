@@ -28,6 +28,18 @@ gimbal_working_modes:
   - name: FPV_MODE
     value: 2
 
+feedback_info_types:
+  - name: SUCCESS
+    value: 0
+  - name: FAILED_PHOTO_RECORD
+    value: 1
+  - name: HDR_ON
+    value: 2
+  - name: HDR_OFF
+    value: 3
+  - name: FAILED_VIDEO_RECORD
+    value: 4
+
 typed_messages:
   - name: GimbalAttitude
     cmd_id: ACQUIRE_GIMBAL_ATT
@@ -118,4 +130,13 @@ typed_messages:
         scale: 0.1
         unit: deg
         helper: RollDeg
+  
+  - name: FuncFeedbackInfo
+    cmd_id: FUNC_FEEDBACK_INFO
+    payload_len: 1
+    fields:
+      - name: infoType
+        type: uint8
+        enum_type: feedback_info_types
+        enum_helper: AsFuncFeedbackInfoType
       

@@ -51,10 +51,6 @@ namespace SIYI
             ManualZoomDirection direction,
             bool needAck = false) const = 0;
 
-        virtual std::vector<uint8_t> SetAbsoluteZoom(
-            int8_t zoomSpeed,
-            bool needAck = false) const = 0;
-
         virtual std::vector<uint8_t> StartRotation(
             int8_t yawSpeed,
             int8_t pitchSpeed,

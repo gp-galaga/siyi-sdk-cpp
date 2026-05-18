@@ -71,6 +71,14 @@ manual_zoom_directions:
   - name: ZOOM_OUT
     value: -1
 
+manual_focus_directions:
+  - name: STOP
+    value: 0
+  - name: LONG_SHOT
+    value: 1
+  - name: CLOSE_SHOT
+    value: -1
+
 camera_models:
   - name: UNKNOWN
   - name: ZR10
@@ -82,6 +90,9 @@ camera_models:
 
 command_metadata:
   - cmd: AUTO_FOCUS
+    scope: ZOOM_CAMERA
+    supported_models: [ZR10, ZR30, ZT30]
+  - cmd: MANUAL_FOCUS
     scope: ZOOM_CAMERA
     supported_models: [ZR10, ZR30, ZT30]
   - cmd: ABSOLUTE_ZOOM

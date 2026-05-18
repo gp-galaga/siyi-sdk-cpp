@@ -77,6 +77,7 @@ def _render_cmd_parameter(tc_data: dict) -> str:
     commands = _enum_lines(tc_data["commands"], hex_values=True, indent=8)
     photo = _enum_lines(tc_data["photo_record_functions"], indent=8)
     zoom_dir = _enum_lines(tc_data["manual_zoom_directions"], indent=8)
+    manual_focus_dir = _enum_lines(tc_data.get("manual_focus_directions", []), indent=8)
 
     camera_models = tc_data.get("camera_models", [])
     camera_model_lines: list[str] = []
@@ -157,6 +158,11 @@ def _render_cmd_parameter(tc_data: dict) -> str:
             "    enum class ManualZoomDirection : int8_t",
             "    {",
             *zoom_dir,
+            "    };",
+            "",
+            "    enum class ManualFocusDirection : int8_t",
+            "    {",
+            *manual_focus_dir,
             "    };",
             "",
             "    enum class CommandScope : uint8_t",

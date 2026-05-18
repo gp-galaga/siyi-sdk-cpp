@@ -107,17 +107,6 @@ namespace SIYI
                     needAck ? ControlFlag::NEED_ACK : ControlFlag::NO_ACK);
             }
 
-            std::vector<uint8_t> SetAbsoluteZoom(
-                const int8_t zoomSpeed,
-                const bool needAck) const
-            {
-                const std::vector<uint8_t> payload = {static_cast<uint8_t>(zoomSpeed)};
-                return BuildPacket(
-                    static_cast<uint8_t>(CommandId::ZOOM),
-                    payload,
-                    needAck ? ControlFlag::NEED_ACK : ControlFlag::NO_ACK);
-            }
-
             std::vector<uint8_t> AcquireFirmwareVersion() const
             {
                 return BuildPacket(

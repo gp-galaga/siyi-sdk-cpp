@@ -36,10 +36,10 @@ namespace
             << "  acquire-fw-ver\n"
             << "  acquire-hw-id\n"
             << "  auto-focus [x_coord] [y_coord]\n"
+            << "  manual-focus <direction>\n"
             << "  center\n"
             << "  absolute-zoom <value>\n"
-            << "   <yaw> <pitch>\n"
-            << "  set-gimbal-angle <yaw> <pitch> # don't forget to multiply by 10 your desired angle value\n"
+            << "  set-gimbal-angle <yaw-degrees> <pitch-degrees> # don't forget to multiply by 10 your desired angle value\n"
             << "  set-utc-time <uint64>\n"
             << "  soft-restart [camera_reboot:0|1] [gimbal_reset:0|1]\n" 
             << "  lock\n"
@@ -48,6 +48,7 @@ namespace
             << "  video-hdmi\n"
             << "  video-cvbs\n"
             << "  video-off\n"
+            << "  feedback-info\n"
             // << "  zr-follow <0|1>\n\n"
             << "Examples:\n"
             << "  " << programName << " 192.168.144.25 37260 picture\n"
@@ -182,6 +183,33 @@ namespace
             }
             return camera.AutoFocus(xCoord, yCoord);
         }
+        if(command == "manual-focus"){
+            if (args.size() < 2)
+            {
+                std::cerr << "manual-focus requires one argument: <direction>\n";
+                return std::nullopt;
+            }
+            const std::string& directionStr = args[1];
+            SIYI::ManualFocusDirection direction;
+            if (directionStr == "stop" || directionStr == "0")
+            {
+                direction = SIYI::ManualFocusDirection::STOP;
+            }
+            else if (directionStr == "long-shot" || directionStr == "1")
+            {
+                direction = SIYI::ManualFocusDirection::LONG_SHOT;
+            }
+            else if (directionStr == "close-shot" || directionStr == "-1")
+            {
+                direction = SIYI::ManualFocusDirection::CLOSE_SHOT;
+            }
+            else
+            {
+                std::cerr << "invalid manual-focus direction: " << directionStr << " (expected 'stop' or '0', 'long-shot' or '1', or 'close-shot' or '-1')\n";
+                return std::nullopt;
+            }
+            return camera.SetManualFocus(direction);
+        }
         if (command == "center")
         {
             return camera.Center();
@@ -253,15 +281,23 @@ namespace
                 return std::nullopt;
             }
 
-            const float scaled = zoomValue * 10.0F;
-            const int scaledInt = static_cast<int>(scaled + 0.5F);
-            if (std::abs(scaled - static_cast<float>(scaledInt)) > 0.001F)
+            // const float scaled = zoomValue * 10.0F;
+            // const int scaledInt = static_cast<int>(scaled + 0.5F);
+            // if (std::abs(scaled - static_cast<float>(scaledInt)) > 0.001F)
+            // {
+            //     std::cerr << "invalid absolute-zoom value: " << args[1] << " (expected a single decimal digit)\n";
+            //     return std::nullopt;
+            // }
+
+            const int int_part = static_cast<int>(zoomValue);
+            const int frac_part = static_cast<int>((zoomValue - static_cast<float>(int_part)) * 10.0F + 0.5F);
+            if (frac_part > 9)
             {
-                std::cerr << "invalid absolute-zoom value: " << args[1] << " (expected a single decimal digit)\n";
+                std::cerr << "invalid absolute-zoom value: " << args[1] << " (fractional part too large after scaling)\n";
                 return std::nullopt;
             }
 
-            return camera.SetAbsoluteZoom(zoomValue, needAck);
+            return camera.SetAbsoluteZoom(int_part, frac_part);
         }
         if (command == "set-gimbal-angle")
         {
