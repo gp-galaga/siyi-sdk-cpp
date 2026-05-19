@@ -16,20 +16,21 @@ if [ ! -f "$TESTS_DIR/doctest.h" ]; then
         https://raw.githubusercontent.com/doctest/doctest/master/doctest/doctest.h \
         || curl -o "$TESTS_DIR/doctest.h" \
             https://raw.githubusercontent.com/doctest/doctest/master/doctest/doctest.h
-    echo "✓ doctest.h downloaded"
+    echo "doctest.h downloaded"
 fi
 
 # Compile
 echo "Building tests..."
 cd "$PROJECT_DIR"
 g++ -std=c++17 -I"$TESTS_DIR" -Iinclude \
-    tests/test_siyi_commands.cpp \
+    tests/test_base_camera.cpp \
+    tests/test_zr30_camera.cpp \
     src/camera/base_camera.cpp \
     src/camera/zr30_camera.cpp \
     src/helper/log_manager.cpp \
     -o test_runner
 
-echo "✓ Build complete"
+echo "Build complete"
 
 # Run
 echo "Running tests..."

@@ -1,4 +1,4 @@
-#include "../../include/camera/izr_camera.hpp"
+#include "../../include/camera/models/zr30_camera.hpp"
 
 namespace SIYI
 {

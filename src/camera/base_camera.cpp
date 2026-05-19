@@ -1,10 +1,11 @@
-#include "../../include/camera/ibase_camera.hpp"
+#include "../../include/camera/models/siyi_camera_base.hpp"
 
 #include <algorithm>
 #include <array>
 #include <cctype>
 #include <iomanip>
 #include <sstream>
+#include <math.h>
 
 namespace SIYI
 {
@@ -65,7 +66,7 @@ namespace SIYI
     } // namespace CRC16
 
     SIYICameraBase::SIYICameraBase(std::shared_ptr<TelecommandSession> session)
-        : ITCCamera(std::move(session))
+        : ICommandCamera(std::move(session))
     {
     }
 
@@ -236,8 +237,10 @@ namespace SIYI
         return packet.Encode();
     }
 
-    std::vector<uint8_t> SIYICameraBase::SetGimbalAngle(int16_t yaw, int16_t pitch) const
+    std::vector<uint8_t> SIYICameraBase::SetGimbalAngleRaw(int16_t yaw, int16_t pitch) const
     {
+        int16_t yaw_updated = yaw;
+        int16_t pitch_times_10 = pitch;
         const std::vector<uint8_t> payload = {
             static_cast<uint8_t>(yaw & 0xFF),
             static_cast<uint8_t>((yaw >> 8) & 0xFF),
@@ -247,6 +250,26 @@ namespace SIYI
             static_cast<uint8_t>(CommandId::SET_GIMBAL_ANGLE),
             payload,
             ControlFlag::NEED_ACK);
+    }
+
+    std::vector<uint8_t> SIYICameraBase::SetGimbalAngle(int16_t yaw, int16_t pitch) const
+    {
+        if(!yawLimit_.IsWithin(yaw) || !pitchLimit_.IsWithin(pitch))
+        {
+            throw std::out_of_range("yaw must be in [" + std::to_string(yawLimit_.min) + ", " + std::to_string(yawLimit_.max) + "] and pitch must be in [" + std::to_string(pitchLimit_.min) + ", " + std::to_string(pitchLimit_.max) + "]");
+        }
+        return SetGimbalAngleRaw(yaw * 10, pitch * 10);
+    }
+
+    std::vector<uint8_t> SIYICameraBase::SetGimbalAngle(float yaw, float pitch) const
+    {
+        if(!yawLimit_.IsWithin(yaw) || !pitchLimit_.IsWithin(pitch))
+        {
+            throw std::out_of_range("yaw must be in [" + std::to_string(yawLimit_.min) + ", " + std::to_string(yawLimit_.max) + "] and pitch must be in [" + std::to_string(pitchLimit_.min) + ", " + std::to_string(pitchLimit_.max) + "]");
+        }
+        return SetGimbalAngleRaw(
+            static_cast<int16_t>(std::lround(yaw * 10.0F)),
+            static_cast<int16_t>(std::lround(pitch * 10.0F)));
     }
 
     std::vector<uint8_t> SIYICameraBase::StartRotation(const int8_t yawSpeed, const int8_t pitchSpeed) const
@@ -494,6 +517,25 @@ namespace SIYI
             ack.currentRollAngle = CRC16::ReadI16Le(packet.data, 4);
 
             outMessage = ack;
+            return true;
+        }
+
+        if (packet.cmdId == static_cast<uint8_t>(CommandId::FUNC_FEEDBACK_INFO))
+        {
+            constexpr size_t kExpectedLen = 1;
+            if (packet.data.size() != kExpectedLen)
+            {
+                if (error != nullptr)
+                {
+                    *error = "FUNC_FEEDBACK_INFO payload must be exactly 1 byte";
+                }
+                return false;
+            }
+
+            TM::FuncFeedbackInfo info;
+            info.infoType = packet.data[0];
+
+            outMessage = info;
             return true;
         }
 

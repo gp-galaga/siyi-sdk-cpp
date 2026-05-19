@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <memory>
 #include <vector>
-#include "ibase_camera.hpp"
+#include "siyi_camera_base.hpp"
 
 namespace SIYI
 {
@@ -12,9 +12,7 @@ namespace SIYI
     class ZR30 : public SIYICameraBase
     {
     public:
-        explicit ZR30(
-            std::shared_ptr<TelecommandSession> session = std::make_shared<TelecommandSession>());
-
+        explicit ZR30(std::shared_ptr<TelecommandSession> session = std::make_shared<TelecommandSession>());
 
         std::vector<uint8_t> SetManualZoom(ManualZoomDirection direction) const;
 

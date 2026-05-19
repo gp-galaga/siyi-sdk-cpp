@@ -1,7 +1,8 @@
-#ifndef __SIYI_CAMERA_HPP__
-#define __SIYI_CAMERA_HPP__
+#ifndef SIYI_CAMERA_BASE_HPP
+#define SIYI_CAMERA_BASE_HPP
 
-#include "icamera_tc.hpp"
+#include "../core/camera_command_interface.hpp"
+#include "../core/telemetry_decoder_interface.hpp"
 
 #include <array>
 #include <cstdint>
@@ -45,28 +46,36 @@ namespace SIYI
                 return max;
             return value;
         }
+
+        bool IsWithin(int16_t value) const
+        {
+            return value >= min && value <= max;
+        }
+
+        bool IsWithin(float value) const
+        {
+            return value >= static_cast<float>(min) && value <= static_cast<float>(max);
+        }
     };
 
     uint16_t Crc16Ccitt(const std::vector<uint8_t>& data);
     std::optional<std::vector<uint8_t>> HexToBytes(const std::string& hex, std::string* error = nullptr);
     std::string BytesToHex(const std::vector<uint8_t>& data);
 
-    class SIYICameraBase : public ITCCamera {
+    class SIYICameraBase : public ICommandCamera, public ITelemetryDecoder {
         public:
             explicit SIYICameraBase(
                 std::shared_ptr<TelecommandSession> session = std::make_shared<TelecommandSession>());
 
-            std::vector<uint8_t> StartRotation(
-                int8_t yawSpeed,
-                int8_t pitchSpeed) const override;
+            std::vector<uint8_t> StartRotation(int8_t yawSpeed, int8_t pitchSpeed) const;
+            
+            std::vector<uint8_t> StopRotation() const;
+            
+            std::vector<uint8_t> SetGimbalAngle(int16_t yaw, int16_t pitch) const;
+            
+            std::vector<uint8_t> SetGimbalAngle(float yaw, float pitch) const;
 
-            std::vector<uint8_t> SetGimbalAngle(
-                int16_t yaw,
-                int16_t pitch) const override;
-
-            std::vector<uint8_t> StopRotation() const override;
-
-            std::vector<uint8_t> ControlPhotoRecord(PhotoRecordFunction funcType) const override;
+            std::vector<uint8_t> ControlPhotoRecord(PhotoRecordFunction funcType) const;
 
             // Convenience wrappers for common photo/record operations.
             std::vector<uint8_t> TakePicture() const;
@@ -120,6 +129,8 @@ namespace SIYI
                 std::string* error = nullptr) const override;
 
         protected:
+            std::vector<uint8_t> SetGimbalAngleRaw(int16_t yaw, int16_t pitch) const;
+
             std::vector<uint8_t> BuildPacket(
                 uint8_t cmdId,
                 const std::vector<uint8_t>& payload,
@@ -132,4 +143,4 @@ namespace SIYI
         };
 }
 
-#endif // __SIYI_CAMERA_HPP__
+#endif // SIYI_CAMERA_BASE_HPP

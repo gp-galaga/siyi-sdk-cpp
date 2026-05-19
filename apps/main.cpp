@@ -1,5 +1,5 @@
-#include "../include/camera/ibase_camera.hpp"
-#include "../include/camera/izr_camera.hpp"
+#include "../include/camera/models/zr30_camera.hpp"
+#include "../include/camera/core/ack_policy.hpp"
 
 #include <arpa/inet.h>
 #include <cerrno>
@@ -39,7 +39,7 @@ namespace
             << "  manual-focus <direction>\n"
             << "  center\n"
             << "  absolute-zoom <value>\n"
-            << "  set-gimbal-angle <yaw-degrees> <pitch-degrees> # don't forget to multiply by 10 your desired angle value\n"
+            << "  set-gimbal-angle <yaw-degrees> <pitch-degrees>\n"
             << "  set-utc-time <uint64>\n"
             << "  soft-restart [camera_reboot:0|1] [gimbal_reset:0|1]\n" 
             << "  lock\n"
@@ -395,18 +395,9 @@ namespace
         {
             return false;
         }
-
-        const std::string& command = args[0];
-        // In practice these are often fire-and-forget on ZR30 over UDP.
-        if (command == "picture" || command == "record" || command == "hdr" ||
-            command == "lock" || command == "follow" || command == "fpv" ||
-            command == "video-hdmi" || command == "video-cvbs" || command == "video-off")
-        {
-            return false;
-        }
-
         return true;
     }
+
 }
 
 int main(int argc, char** argv)
@@ -493,6 +484,14 @@ int main(int argc, char** argv)
         PrintUsage(argv[0]);
         return 1;
     }
+
+    if (frame->size() < 8U)
+    {
+        std::cerr << "built frame is unexpectedly short\n";
+        return 1;
+    }
+
+    const uint8_t requestCmdId = frame->at(7);
 
     const bool waitForAck = needAck && CommandExpectedToAck(commandArgs);
     if (needAck && !waitForAck)
@@ -582,7 +581,6 @@ int main(int argc, char** argv)
             }
             else
             {
-                receivedAnyAck = true;
                 response.resize(static_cast<size_t>(received));
                 std::cout << "Received frame: " << SIYI::BytesToHex(response) << "\n";
 
@@ -593,6 +591,18 @@ int main(int argc, char** argv)
                 }
                 else
                 {
+                    if (waitForAck && !SIYI::AckPolicy::IsExpectedAckCmdIdForRequest(decoded.cmdId, requestCmdId))
+                    {
+                        std::cout << "  note: received unrelated response cmd_id 0x" << std::hex
+                                  << static_cast<unsigned int>(decoded.cmdId)
+                                  << ", expected 0x" << static_cast<unsigned int>(SIYI::AckPolicy::ExpectedAckCmdIdForRequest(requestCmdId))
+                                  << "\n";
+                    }
+                    else
+                    {
+                        receivedAnyAck = true;
+                    }
+
                     std::cout << "Decoded response:\n";
                     std::cout << "  ctrl: 0x" << std::hex << static_cast<unsigned int>(decoded.ctrl) << "\n";
                     std::cout << "  seq: " << std::dec << decoded.seq << "\n";
@@ -639,6 +649,11 @@ int main(int argc, char** argv)
                             std::cout << "  currentYawAngle: " << ack->currentYawAngle << " (" << ack->YawDeg() << " deg)\n";
                             std::cout << "  currentPitchAngle: " << ack->currentPitchAngle << " (" << ack->PitchDeg() << " deg)\n";
                             std::cout << "  currentRollAngle: " << ack->currentRollAngle << " (" << ack->RollDeg() << " deg)\n";
+                        }
+                        else if (const auto* info = std::get_if<SIYI::TM::FuncFeedbackInfo>(&tmMessage); info != nullptr)
+                        {
+                            std::cout << "Decoded typed telemetry (FuncFeedbackInfo):\n";
+                            std::cout << "  infoType: " << static_cast<unsigned int>(info->infoType) << "\n";
                         }
                     }
                 }

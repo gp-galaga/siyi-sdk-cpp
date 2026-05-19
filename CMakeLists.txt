@@ -41,7 +41,9 @@ else()
 endif()
 
 if(EXISTS "${DOCTEST_HEADER_PATH}/doctest.h")
-    add_executable(test_siyi_commands tests/test_siyi_commands.cpp)
+    add_executable(test_siyi_commands
+        tests/test_base_camera.cpp
+        tests/test_zr30_camera.cpp)
     target_include_directories(test_siyi_commands PRIVATE ${DOCTEST_HEADER_PATH})
     target_link_libraries(test_siyi_commands siyi_sdk)
     
