@@ -17,8 +17,11 @@ endif()
 
 # Main library sources
 set(SIYI_SOURCES
-    src/camera/base_camera.cpp
-    src/camera/zr30_camera.cpp
+    src/camera/shared_camera_model.cpp
+    src/camera/optical_zoom_camera_model.cpp
+    src/camera/zr30_camera_model.cpp
+    src/transport/udp_transport.cpp
+    src/transport/tcp_transport.cpp
     src/helper/log_manager.cpp
 )
 
@@ -42,8 +45,9 @@ endif()
 
 if(EXISTS "${DOCTEST_HEADER_PATH}/doctest.h")
     add_executable(test_siyi_commands
-        tests/test_base_camera.cpp
-        tests/test_zr30_camera.cpp)
+        tests/test_shared_camera_model.cpp
+        tests/test_optical_zoom_camera_model.cpp
+        tests/test_zr30_camera_model.cpp)
     target_include_directories(test_siyi_commands PRIVATE ${DOCTEST_HEADER_PATH})
     target_link_libraries(test_siyi_commands siyi_sdk)
     

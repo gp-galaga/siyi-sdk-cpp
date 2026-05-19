@@ -1,5 +1,5 @@
-#ifndef SIYI_CAMERA_BASE_HPP
-#define SIYI_CAMERA_BASE_HPP
+#ifndef SHARED_CAMERA_BASE_HPP
+#define SHARED_CAMERA_BASE_HPP
 
 #include "../core/camera_command_interface.hpp"
 #include "../core/telemetry_decoder_interface.hpp"
@@ -33,39 +33,22 @@ namespace SIYI
             std::string* error = nullptr);
     };
 
-    struct AngleLimit
-    {
-        int16_t min;
-        int16_t max;
-
-        int16_t Clamp(int16_t value) const
-        {
-            if (value < min)
-                return min;
-            if (value > max)
-                return max;
-            return value;
-        }
-
-        bool IsWithin(int16_t value) const
-        {
-            return value >= min && value <= max;
-        }
-
-        bool IsWithin(float value) const
-        {
-            return value >= static_cast<float>(min) && value <= static_cast<float>(max);
-        }
-    };
-
     uint16_t Crc16Ccitt(const std::vector<uint8_t>& data);
     std::optional<std::vector<uint8_t>> HexToBytes(const std::string& hex, std::string* error = nullptr);
     std::string BytesToHex(const std::vector<uint8_t>& data);
 
-    class SIYICameraBase : public ICommandCamera, public ITelemetryDecoder {
+    class SharedCameraModel : public ICommandCamera, public ITelemetryDecoder {
         public:
-            explicit SIYICameraBase(
-                std::shared_ptr<TelecommandSession> session = std::make_shared<TelecommandSession>());
+            explicit SharedCameraModel(int16_t pitchMin, int16_t pitchMax,
+                                       int16_t yawMin, int16_t yawMax,
+                                       int16_t rollMin, int16_t rollMax,
+                                       std::shared_ptr<TelecommandSession> session = std::make_shared<TelecommandSession>());
+
+            explicit SharedCameraModel(int16_t pitchMin, int16_t pitchMax,
+                                       int16_t yawMin, int16_t yawMax,
+                                       int16_t rollMin, int16_t rollMax,
+                                       int16_t zoomMin, int16_t zoomMax,
+                                       std::shared_ptr<TelecommandSession> session = std::make_shared<TelecommandSession>());
 
             std::vector<uint8_t> StartRotation(int8_t yawSpeed, int8_t pitchSpeed) const;
             
@@ -113,6 +96,17 @@ namespace SIYI
             std::vector<uint8_t> BuildCustomCommand(uint8_t cmdId, const std::vector<uint8_t>& payload, bool needAck = true) const override;
 
 
+            // accessors
+            int16_t GetPitchMin() const noexcept { return pitch_min_; }
+            int16_t GetPitchMax() const noexcept { return pitch_max_; }
+            int16_t GetYawMin() const noexcept { return yaw_min_; }
+            int16_t GetYawMax() const noexcept { return yaw_max_; }
+            int16_t GetRollMin() const noexcept { return roll_min_; }
+            int16_t GetRollMax() const noexcept { return roll_max_; }
+            int16_t GetZoomMin() const noexcept { return zoom_min_; }
+            int16_t GetZoomMax() const noexcept { return zoom_max_; }
+
+            // transport
             bool DecodeFrame(
                 const std::vector<uint8_t>& frame,
                 SIYIPacket& outPacket,
@@ -131,16 +125,25 @@ namespace SIYI
         protected:
             std::vector<uint8_t> SetGimbalAngleRaw(int16_t yaw, int16_t pitch) const;
 
+            bool IsPitchWithin(int16_t value) const noexcept { return value >= pitch_min_ && value <= pitch_max_; }
+            bool IsPitchWithin(float value) const noexcept { return value >= static_cast<float>(pitch_min_) && value <= static_cast<float>(pitch_max_); }
+            bool IsYawWithin(int16_t value) const noexcept { return value >= yaw_min_ && value <= yaw_max_; }
+            bool IsYawWithin(float value) const noexcept { return value >= static_cast<float>(yaw_min_) && value <= static_cast<float>(yaw_max_); }
+
             std::vector<uint8_t> BuildPacket(
                 uint8_t cmdId,
                 const std::vector<uint8_t>& payload,
                 ControlFlag flag) const;
 
-            AngleLimit pitchLimit_ {};
-            AngleLimit yawLimit_ {};
-            AngleLimit zoomLimit_ {};
-            AngleLimit rollLimit_ {};
+            int16_t pitch_min_ {0};
+            int16_t pitch_max_ {0};
+            int16_t yaw_min_ {0};
+            int16_t yaw_max_ {0};
+            int16_t roll_min_ {0};
+            int16_t roll_max_ {0};
+            int16_t zoom_min_ {1};
+            int16_t zoom_max_ {1};
         };
 }
 
-#endif // SIYI_CAMERA_BASE_HPP
+#endif // SHARED_CAMERA_BASE_HPP

@@ -2,26 +2,32 @@
 #include "doctest.h"
 
 #include "../include/camera/core/ack_policy.hpp"
-#include "../include/camera/models/siyi_camera_base.hpp"
+#include "../include/camera/models/shared_camera_model.hpp"
 
 namespace SIYI
 {
-    class TestBaseCamera final : public SIYICameraBase
+    class TestBaseCamera final : public SharedCameraModel
     {
     public:
         explicit TestBaseCamera(
             std::shared_ptr<TelecommandSession> session = std::make_shared<TelecommandSession>())
-            : SIYICameraBase(std::move(session))
-        {
-            pitchLimit_ = {-90, 25};
-            yawLimit_ = {-270, 270};
-            zoomLimit_ = {0, 180};
-            rollLimit_ = {-360, 360};
+            : SharedCameraModel(-90, 25, -270, 270, -360, 360, session){
         }
     };
 
     TEST_SUITE("SIYI Base Camera")
     {
+        TEST_CASE("TestBaseCamera constructor initializes with correct limits")
+        {
+            TestBaseCamera camera;
+
+            CHECK(camera.GetPitchMin() == -90);
+            CHECK(camera.GetPitchMax() == 25);
+            CHECK(camera.GetYawMin() == -270);
+            CHECK(camera.GetYawMax() == 270);
+            CHECK(camera.GetRollMin() == -360);
+            CHECK(camera.GetRollMax() == 360);
+        }
         TEST_CASE("Photo-record command keeps payload and uses no-ACK control byte")
         {
             TestBaseCamera camera;
@@ -226,6 +232,30 @@ namespace SIYI
 
             CHECK_THROWS_AS(camera.SetGimbalAngle(300.0F, 0.0F), std::out_of_range);
             CHECK_THROWS_AS(camera.SetGimbalAngle(0.0F, -100.0F), std::out_of_range);
+        }
+
+        TEST_CASE("SetGimbalAngle accepts exact boundary values")
+        {
+            TestBaseCamera camera;
+
+            const auto minFrame = camera.SetGimbalAngle(static_cast<int16_t>(-270), static_cast<int16_t>(-90));
+            const auto maxFrame = camera.SetGimbalAngle(static_cast<int16_t>(270), static_cast<int16_t>(25));
+
+            SIYIPacket minPacket;
+            SIYIPacket maxPacket;
+            REQUIRE(camera.DecodeFrame(minFrame, minPacket));
+            REQUIRE(camera.DecodeFrame(maxFrame, maxPacket));
+
+            CHECK(minPacket.data == std::vector<uint8_t>({0x74, 0xF5, 0x7C, 0xFC}));
+            CHECK(maxPacket.data == std::vector<uint8_t>({0x8C, 0x0A, 0xFA, 0x00}));
+        }
+
+        TEST_CASE("SetGimbalAngle int overload rejects out-of-range values")
+        {
+            TestBaseCamera camera;
+
+            CHECK_THROWS_AS(camera.SetGimbalAngle(static_cast<int16_t>(271), static_cast<int16_t>(0)), std::out_of_range);
+            CHECK_THROWS_AS(camera.SetGimbalAngle(static_cast<int16_t>(0), static_cast<int16_t>(26)), std::out_of_range);
         }
 
         TEST_CASE("Decode typed gimbal attitude telemetry")

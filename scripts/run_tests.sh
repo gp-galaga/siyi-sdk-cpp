@@ -23,9 +23,9 @@ fi
 echo "Building tests..."
 cd "$PROJECT_DIR"
 g++ -std=c++17 -I"$TESTS_DIR" -Iinclude \
-    tests/test_base_camera.cpp \
+    tests/test_shared_camera_base.cpp \
     tests/test_zr30_camera.cpp \
-    src/camera/base_camera.cpp \
+    src/camera/shared_camera_base.cpp \
     src/camera/zr30_camera.cpp \
     src/helper/log_manager.cpp \
     -o test_runner

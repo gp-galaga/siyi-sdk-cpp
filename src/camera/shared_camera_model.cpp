@@ -1,4 +1,4 @@
-#include "../../include/camera/models/siyi_camera_base.hpp"
+#include "../../include/camera/models/shared_camera_model.hpp"
 
 #include <algorithm>
 #include <array>
@@ -65,9 +65,29 @@ namespace SIYI
         }
     } // namespace CRC16
 
-    SIYICameraBase::SIYICameraBase(std::shared_ptr<TelecommandSession> session)
+    SharedCameraModel::SharedCameraModel(int16_t pitchMin, int16_t pitchMax,
+                                         int16_t yawMin, int16_t yawMax,
+                                         int16_t rollMin, int16_t rollMax,
+                                         std::shared_ptr<TelecommandSession> session)
         : ICommandCamera(std::move(session))
     {
+        pitch_min_ = pitchMin;
+        pitch_max_ = pitchMax;
+        yaw_min_ = yawMin;
+        yaw_max_ = yawMax;
+        roll_min_ = rollMin;
+        roll_max_ = rollMax;
+    }
+
+    SharedCameraModel::SharedCameraModel(int16_t pitchMin, int16_t pitchMax,
+                                         int16_t yawMin, int16_t yawMax,
+                                         int16_t rollMin, int16_t rollMax,
+                                         int16_t zoomMin, int16_t zoomMax,
+                                         std::shared_ptr<TelecommandSession> session)
+        : SharedCameraModel(pitchMin, pitchMax, yawMin, yawMax, rollMin, rollMax, std::move(session))
+    {
+        zoom_min_ = zoomMin;
+        zoom_max_ = zoomMax;
     }
 
     uint16_t Crc16Ccitt(const std::vector<uint8_t> &data)
@@ -223,7 +243,7 @@ namespace SIYI
         return packet;
     }
 
-    std::vector<uint8_t> SIYICameraBase::BuildPacket(
+    std::vector<uint8_t> SharedCameraModel::BuildPacket(
         const uint8_t cmdId,
         const std::vector<uint8_t> &payload,
         const ControlFlag flag) const
@@ -237,10 +257,8 @@ namespace SIYI
         return packet.Encode();
     }
 
-    std::vector<uint8_t> SIYICameraBase::SetGimbalAngleRaw(int16_t yaw, int16_t pitch) const
+    std::vector<uint8_t> SharedCameraModel::SetGimbalAngleRaw(int16_t yaw, int16_t pitch) const
     {
-        int16_t yaw_updated = yaw;
-        int16_t pitch_times_10 = pitch;
         const std::vector<uint8_t> payload = {
             static_cast<uint8_t>(yaw & 0xFF),
             static_cast<uint8_t>((yaw >> 8) & 0xFF),
@@ -252,27 +270,31 @@ namespace SIYI
             ControlFlag::NEED_ACK);
     }
 
-    std::vector<uint8_t> SIYICameraBase::SetGimbalAngle(int16_t yaw, int16_t pitch) const
+    std::vector<uint8_t> SharedCameraModel::SetGimbalAngle(int16_t yaw, int16_t pitch) const
     {
-        if(!yawLimit_.IsWithin(yaw) || !pitchLimit_.IsWithin(pitch))
+        if (!IsYawWithin(yaw) || !IsPitchWithin(pitch))
         {
-            throw std::out_of_range("yaw must be in [" + std::to_string(yawLimit_.min) + ", " + std::to_string(yawLimit_.max) + "] and pitch must be in [" + std::to_string(pitchLimit_.min) + ", " + std::to_string(pitchLimit_.max) + "]");
+            throw std::out_of_range(
+                "yaw must be in [" + std::to_string(yaw_min_) + ", " + std::to_string(yaw_max_) +
+                "] and pitch must be in [" + std::to_string(pitch_min_) + ", " + std::to_string(pitch_max_) + "]");
         }
         return SetGimbalAngleRaw(yaw * 10, pitch * 10);
     }
 
-    std::vector<uint8_t> SIYICameraBase::SetGimbalAngle(float yaw, float pitch) const
+    std::vector<uint8_t> SharedCameraModel::SetGimbalAngle(float yaw, float pitch) const
     {
-        if(!yawLimit_.IsWithin(yaw) || !pitchLimit_.IsWithin(pitch))
+        if (!IsYawWithin(yaw) || !IsPitchWithin(pitch))
         {
-            throw std::out_of_range("yaw must be in [" + std::to_string(yawLimit_.min) + ", " + std::to_string(yawLimit_.max) + "] and pitch must be in [" + std::to_string(pitchLimit_.min) + ", " + std::to_string(pitchLimit_.max) + "]");
+            throw std::out_of_range(
+                "yaw must be in [" + std::to_string(yaw_min_) + ", " + std::to_string(yaw_max_) +
+                "] and pitch must be in [" + std::to_string(pitch_min_) + ", " + std::to_string(pitch_max_) + "]");
         }
         return SetGimbalAngleRaw(
             static_cast<int16_t>(std::lround(yaw * 10.0F)),
             static_cast<int16_t>(std::lround(pitch * 10.0F)));
     }
 
-    std::vector<uint8_t> SIYICameraBase::StartRotation(const int8_t yawSpeed, const int8_t pitchSpeed) const
+    std::vector<uint8_t> SharedCameraModel::StartRotation(const int8_t yawSpeed, const int8_t pitchSpeed) const
     {
         const std::vector<uint8_t> payload = {
             static_cast<uint8_t>(yawSpeed),
@@ -283,7 +305,7 @@ namespace SIYI
             ControlFlag::NEED_ACK);
     }
 
-    std::vector<uint8_t> SIYICameraBase::StopRotation() const
+    std::vector<uint8_t> SharedCameraModel::StopRotation() const
     {
         const std::vector<uint8_t> payload = {0x00, 0x00};
         return BuildPacket(
@@ -292,7 +314,7 @@ namespace SIYI
             ControlFlag::NEED_ACK);
     }
 
-    std::vector<uint8_t> SIYICameraBase::AcquireFirmwareVersion() const
+    std::vector<uint8_t> SharedCameraModel::AcquireFirmwareVersion() const
     {
         return BuildPacket(
             static_cast<uint8_t>(CommandId::ACQUIRE_FW_VER),
@@ -300,7 +322,7 @@ namespace SIYI
             ControlFlag::NEED_ACK);
     }
 
-    std::vector<uint8_t> SIYICameraBase::AcquireHardwareId() const
+    std::vector<uint8_t> SharedCameraModel::AcquireHardwareId() const
     {
         return BuildPacket(
             static_cast<uint8_t>(CommandId::ACQUIRE_HW_ID),
@@ -308,7 +330,7 @@ namespace SIYI
             ControlFlag::NEED_ACK);
     }
 
-    std::vector<uint8_t> SIYICameraBase::Center() const
+    std::vector<uint8_t> SharedCameraModel::Center() const
     {
         return BuildPacket(
             static_cast<uint8_t>(CommandId::CENTER),
@@ -316,7 +338,7 @@ namespace SIYI
             ControlFlag::NEED_ACK);
     }
 
-    std::vector<uint8_t> SIYICameraBase::AcquireGimbalConfiguration() const
+    std::vector<uint8_t> SharedCameraModel::AcquireGimbalConfiguration() const
     {
         return BuildPacket(
             static_cast<uint8_t>(CommandId::ACQUIRE_GIMBAL_CONFIGURATION),
@@ -324,7 +346,7 @@ namespace SIYI
             ControlFlag::NEED_ACK);
     }
 
-    std::vector<uint8_t> SIYICameraBase::AcquireGimbalAttitude() const
+    std::vector<uint8_t> SharedCameraModel::AcquireGimbalAttitude() const
     {
         return BuildPacket(
             static_cast<uint8_t>(CommandId::ACQUIRE_GIMBAL_ATT),
@@ -332,7 +354,7 @@ namespace SIYI
             ControlFlag::NEED_ACK);
     }
 
-    std::vector<uint8_t> SIYICameraBase::AcquireFunctionFeedbackInfo() const
+    std::vector<uint8_t> SharedCameraModel::AcquireFunctionFeedbackInfo() const
     {
         return BuildPacket(
             static_cast<uint8_t>(CommandId::FUNC_FEEDBACK_INFO),
@@ -340,7 +362,7 @@ namespace SIYI
             ControlFlag::NEED_ACK);
     }
 
-    std::vector<uint8_t> SIYICameraBase::SetUtcTime(uint64_t unixTimeUs) const
+    std::vector<uint8_t> SharedCameraModel::SetUtcTime(uint64_t unixTimeUs) const
     {
         std::vector<uint8_t> payload(8);
         payload[0] = static_cast<uint8_t>((unixTimeUs >> 0) & 0xFF);
@@ -358,12 +380,12 @@ namespace SIYI
             ControlFlag::NEED_ACK);
     }
 
-    std::vector<uint8_t> SIYICameraBase::SetUtcTime(std::chrono::microseconds unixTime) const
+    std::vector<uint8_t> SharedCameraModel::SetUtcTime(std::chrono::microseconds unixTime) const
     {
         return SetUtcTime(static_cast<uint64_t>(unixTime.count()));
     }
 
-    std::vector<uint8_t> SIYICameraBase::SoftRestart(uint8_t camera_reboot, uint8_t gimbal_reset) const
+    std::vector<uint8_t> SharedCameraModel::SoftRestart(uint8_t camera_reboot, uint8_t gimbal_reset) const
     {
         return BuildPacket(
             static_cast<uint8_t>(CommandId::SOFT_RESTART),
@@ -371,7 +393,7 @@ namespace SIYI
             ControlFlag::NEED_ACK);
     }
 
-    std::vector<uint8_t> SIYICameraBase::SoftRestart(bool rebootCamera, bool resetGimbal) const
+    std::vector<uint8_t> SharedCameraModel::SoftRestart(bool rebootCamera, bool resetGimbal) const
     {
         return BuildPacket(
             static_cast<uint8_t>(CommandId::SOFT_RESTART),
@@ -379,7 +401,7 @@ namespace SIYI
             ControlFlag::NEED_ACK);
     }
 
-    std::vector<uint8_t> SIYICameraBase::ControlPhotoRecord(
+    std::vector<uint8_t> SharedCameraModel::ControlPhotoRecord(
         const PhotoRecordFunction funcType) const
     {
         const std::vector<uint8_t> payload = {static_cast<uint8_t>(funcType)};
@@ -389,38 +411,38 @@ namespace SIYI
             ControlFlag::NO_ACK);
     }
 
-    std::vector<uint8_t> SIYICameraBase::TakePicture() const
+    std::vector<uint8_t> SharedCameraModel::TakePicture() const
     {
         return ControlPhotoRecord(PhotoRecordFunction::TAKE_PICTURE);
     }
 
     // not supported yet
-    std::vector<uint8_t> SIYICameraBase::ToggleHDR() const
+    std::vector<uint8_t> SharedCameraModel::ToggleHDR() const
     {
         return ControlPhotoRecord(PhotoRecordFunction::TOGGLE_HDR);
     }
 
-    std::vector<uint8_t> SIYICameraBase::StartStopRecording() const
+    std::vector<uint8_t> SharedCameraModel::StartStopRecording() const
     {
         return ControlPhotoRecord(PhotoRecordFunction::START_STOP_RECORDING);
     }
 
-    std::vector<uint8_t> SIYICameraBase::LockMotion() const
+    std::vector<uint8_t> SharedCameraModel::LockMotion() const
     {
         return ControlPhotoRecord(PhotoRecordFunction::MOTION_LOCK_MODE);
     }
 
-    std::vector<uint8_t> SIYICameraBase::FollowMotion() const
+    std::vector<uint8_t> SharedCameraModel::FollowMotion() const
     {
         return ControlPhotoRecord(PhotoRecordFunction::MOTION_FOLLOW_MODE);
     }
 
-    std::vector<uint8_t> SIYICameraBase::FPVMotion() const
+    std::vector<uint8_t> SharedCameraModel::FPVMotion() const
     {
         return ControlPhotoRecord(PhotoRecordFunction::MOTION_FPV_MODE);
     }
 
-    std::vector<uint8_t> SIYICameraBase::BuildCustomCommand(
+    std::vector<uint8_t> SharedCameraModel::BuildCustomCommand(
         const uint8_t cmdId,
         const std::vector<uint8_t> &payload,
         const bool needAck) const
@@ -431,7 +453,7 @@ namespace SIYI
             needAck ? ControlFlag::NEED_ACK : ControlFlag::NO_ACK);
     }
 
-    bool SIYICameraBase::DecodeFrame(
+    bool SharedCameraModel::DecodeFrame(
         const std::vector<uint8_t> &frame,
         SIYIPacket &outPacket,
         std::string *error) const
@@ -445,7 +467,7 @@ namespace SIYI
         return true;
     }
 
-    bool SIYICameraBase::DecodeTelemetryPacket(
+    bool SharedCameraModel::DecodeTelemetryPacket(
         const SIYIPacket &packet,
         TM::TelemetryMessage &outMessage,
         std::string *error) const
@@ -546,7 +568,7 @@ namespace SIYI
         return false;
     }
 
-    bool SIYICameraBase::DecodeTelemetryFrame(
+    bool SharedCameraModel::DecodeTelemetryFrame(
         const std::vector<uint8_t> &frame,
         TM::TelemetryMessage &outMessage,
         std::string *error) const

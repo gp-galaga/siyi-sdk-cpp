@@ -1,20 +1,20 @@
-#include "../include/camera/models/zr30_camera.hpp"
+#include "../include/camera/models/zr30_camera_model.hpp"
 #include "../include/camera/core/ack_policy.hpp"
+#include "../include/transport/itransport.hpp"
+#include "../include/transport/tcp_transport.hpp"
+#include "../include/transport/udp_transport.hpp"
 
-#include <arpa/inet.h>
 #include <cerrno>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <memory>
 #include <optional>
 #include <string>
-#include <sys/socket.h>
-#include <sys/time.h>
 #include <thread>
 #include <chrono>
-#include <unistd.h>
 #include <vector>
 
 namespace
@@ -23,11 +23,12 @@ namespace
     {
         std::cerr
             << "Usage:\n"
-            << "  " << programName << " <ip> <port> <command> [args] [--no-ack] [--timeout-ms N] [--bind-port P] [--repeat N] [--period-ms N]\n\n"
+            << "  " << programName << " <ip> <port> <command> [args] [--transport udp|tcp] [--no-ack] [--timeout-ms N] [--bind-port P] [--repeat N] [--period-ms N]\n\n"
             << "Commands:\n"
             << "  picture\n"
             << "  record\n"
             << "  hdr\n"
+            << "  tcp-heartbeat\n"
             << "  zoom <speed>\n"
             << "  rotate <yaw_speed> <pitch_speed>\n"
             << "  stop-rotation\n"
@@ -226,6 +227,13 @@ namespace
         {
             return camera.ToggleHDR();
         }
+        if (command == "tcp-heartbeat")
+        {
+            return camera.BuildCustomCommand(
+                static_cast<uint8_t>(SIYI::CommandId::TCP_HEARTBEAT),
+                {0x00},
+                true);
+        }
         if (command == "lock")
         {
             return camera.ControlPhotoRecord(SIYI::PhotoRecordFunction::MOTION_LOCK_MODE);
@@ -421,10 +429,26 @@ int main(int argc, char** argv)
     int repeatCount = 1;
     int periodMs = 100;
     uint16_t bindPort = 0;
+    std::string transportName = "udp";
     std::vector<std::string> commandArgs;
     for (int i = 3; i < argc; ++i)
     {
         const std::string arg = argv[i];
+        if (arg == "--transport")
+        {
+            if (i + 1 >= argc)
+            {
+                std::cerr << "--transport requires a value (udp or tcp)\n";
+                return 1;
+            }
+            transportName = argv[++i];
+            if (transportName != "udp" && transportName != "tcp")
+            {
+                std::cerr << "invalid --transport value: " << transportName << " (expected udp or tcp)\n";
+                return 1;
+            }
+            continue;
+        }
         if (arg == "--no-ack")
         {
             needAck = false;
@@ -491,6 +515,12 @@ int main(int argc, char** argv)
         return 1;
     }
 
+    if (!commandArgs.empty() && commandArgs[0] == "tcp-heartbeat" && transportName != "tcp")
+    {
+        std::cerr << "tcp-heartbeat is only available when --transport tcp is selected\n";
+        return 1;
+    }
+
     const uint8_t requestCmdId = frame->at(7);
 
     const bool waitForAck = needAck && CommandExpectedToAck(commandArgs);
@@ -502,86 +532,44 @@ int main(int argc, char** argv)
     std::cout << "Sending frame: " << SIYI::BytesToHex(frame.value()) << "\n";
     std::cout << "Sequence: " << (camera.PeekNextSeq() - 1) << "\n";
 
-    const int socketFd = ::socket(AF_INET, SOCK_DGRAM, 0);
-    if (socketFd < 0)
+    std::unique_ptr<SIYI::ITransport> transport;
+    if (transportName == "tcp")
     {
-        std::cerr << "socket() failed: " << std::strerror(errno) << "\n";
-        return 1;
+        transport = std::make_unique<SIYI::TcpTransport>();
     }
-
-    if (bindPort != 0)
+    else
     {
-        sockaddr_in localAddress {};
-        localAddress.sin_family = AF_INET;
-        localAddress.sin_addr.s_addr = htonl(INADDR_ANY);
-        localAddress.sin_port = htons(bindPort);
-        if (::bind(socketFd, reinterpret_cast<const sockaddr*>(&localAddress), sizeof(localAddress)) != 0)
-        {
-            std::cerr << "bind() failed on local port " << bindPort << ": " << std::strerror(errno) << "\n";
-            ::close(socketFd);
-            return 1;
-        }
-    }
-
-    timeval timeout {};
-    timeout.tv_sec = timeoutMs / 1000;
-    timeout.tv_usec = (timeoutMs % 1000) * 1000;
-    if (::setsockopt(socketFd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) != 0)
-    {
-        std::cerr << "setsockopt() failed: " << std::strerror(errno) << "\n";
-        ::close(socketFd);
-        return 1;
-    }
-
-    sockaddr_in cameraAddress {};
-    cameraAddress.sin_family = AF_INET;
-    cameraAddress.sin_port = htons(port);
-    if (::inet_pton(AF_INET, ipAddress.c_str(), &cameraAddress.sin_addr) != 1)
-    {
-        std::cerr << "invalid IPv4 address: " << ipAddress << "\n";
-        ::close(socketFd);
-        return 1;
+        transport = std::make_unique<SIYI::UdpTransport>();
     }
 
     std::string error;
+    if (!transport->Open(ipAddress, port, bindPort, &error))
+    {
+        std::cerr << "transport open failed: " << error << "\n";
+        return 1;
+    }
+
     bool receivedAnyAck = false;
 
     for (int n = 0; n < repeatCount; ++n)
     {
-        const ssize_t sent = ::sendto(
-            socketFd,
-            frame->data(),
-            frame->size(),
-            0,
-            reinterpret_cast<const sockaddr*>(&cameraAddress),
-            sizeof(cameraAddress));
-        if (sent < 0)
+        if (!transport->Send(*frame, &error))
         {
-            std::cerr << "sendto() failed: " << std::strerror(errno) << "\n";
-            ::close(socketFd);
+            std::cerr << "send failed: " << error << "\n";
+            transport->Close();
             return 1;
         }
 
         if (waitForAck)
         {
-            std::vector<uint8_t> response(1024);
-            sockaddr_in sourceAddress {};
-            socklen_t sourceLength = sizeof(sourceAddress);
-            const ssize_t received = ::recvfrom(
-                socketFd,
-                response.data(),
-                response.size(),
-                0,
-                reinterpret_cast<sockaddr*>(&sourceAddress),
-                &sourceLength);
-            if (received < 0)
+            std::vector<uint8_t> response;
+            if (!transport->Receive(response, timeoutMs, &error))
             {
-                std::cerr << "recvfrom() failed or timed out (attempt " << (n + 1) << '/' << repeatCount << "): "
-                          << std::strerror(errno) << "\n";
+                std::cerr << "receive failed or timed out (attempt " << (n + 1) << '/' << repeatCount << "): "
+                          << error << "\n";
             }
             else
             {
-                response.resize(static_cast<size_t>(received));
                 std::cout << "Received frame: " << SIYI::BytesToHex(response) << "\n";
 
                 SIYI::SIYIPacket decoded;
@@ -673,10 +661,10 @@ int main(int argc, char** argv)
     else if (!receivedAnyAck)
     {
         std::cerr << "No ACK received for any attempt.\n";
-        ::close(socketFd);
+        transport->Close();
         return 1;
     }
 
-    ::close(socketFd);
+    transport->Close();
     return 0;
 }
