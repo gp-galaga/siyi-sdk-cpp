@@ -29,22 +29,90 @@ cmake --build --preset debug
 ctest --preset debug
 ```
 
-## Project Layout
 
-- `protocol/tc/definitions.yaml`: source-of-truth for telecommand (TC) enums and IDs
-- `protocol/tm/definitions.yaml`: source-of-truth for telemetry (TM) enums, message IDs, and typed payload fields
-- `include/camera/enum/cmd_parameter.hpp`: command IDs and control flags
-- `include/camera/enum/tm_parameters.hpp`: typed telemetry models
-- `include/camera/icamera_tc.hpp`: camera/session interface
-- `include/camera/ibase_camera.hpp`: base SIYI camera command helpers
-- `include/camera/izr_camera.hpp`: ZR30 class
-- `src/camera/base_camera.cpp`: packet codec + base logic
-- `src/camera/zr30_camera.cpp`: ZR30 model setup
-- `apps/main.cpp`: UDP demo app
-- `tests/test_siyi_commands.cpp`: unit tests
-- `scripts/run_tests.sh`: test helper script
-- `scripts/generate_protocol_headers.py`: generates enum headers from YAML
-- `scripts/export_tc_tm.sh`: export TC/TM matrix for release
+## Project Tree
+
+```
+├── CMakeLists.txt
+├── CMakePresets.json
+├── README.md
+├── apps/
+│   └── main.cpp                                    # CLI demo app
+├── include/
+│   ├── camera/
+│   |    ├── core/                                  # Core interfaces and infrastructure
+│   |    │   ├── ack_policy.hpp
+│   |    │   ├── camera_command_interface.hpp
+│   |    │   ├── telecommand_session.hpp
+│   |    │   └── telemetry_decoder_interface.hpp
+│   |    ├── models/                                # Camera model implementations
+│   |    │   ├── shared_camera_model.hpp
+│   |    │   ├── optical_zoom_camera_model.hpp
+│   |    │   └── zr30_camera_model.hpp
+│   |    └── protocol/                              # Generated protocol headers from python script `generate_protocol_headers.py` and protocol definition
+│   |        ├── tc_parameter.hpp
+│   |        └── tm_parameters.hpp
+│   └── helper/
+│       └── ilog_manager.hpp
+│   └── transport/
+│       ├── itransport.hpp
+│       ├── tcp_transport.hpp
+│       └── udp_transport.hpp
+├── protocol/
+│   ├── tc/definitions.yaml                         # Telecommand definitions
+│   └── tm/definitions.yaml                         # Telemetry definitions
+├── scripts/
+│   ├── export_tc_tm.sh
+│   ├── generate_protocol_headers.py
+│   └── run_tests.sh
+├── src/
+│   ├── camera/
+│   │   ├── shared_camera_model.cpp
+│   │   ├── optical_zoom_camera_model.cpp
+│   │   └── zr30_camera_model.cpp
+│   ├── helper/
+│   │   └── log_manager.cpp
+│   └── transport/
+│       ├── tcp_transport.cpp
+│       └── udp_transport.cpp
+├── tests/
+│   ├── doctest.h
+│   ├── test_shared_camera_model.cpp
+│   ├── test_optical_zoom_camera_model.cpp
+│   └── test_zr30_camera_model.cpp
+```
+
+---
+
+## Running Unit Tests (Manual)
+
+You can run all unit tests manually using CMake presets or the provided script. The tests use [doctest](https://github.com/doctest/doctest).
+
+**Recommended (from repo root):**
+
+```bash
+cmake --preset debug
+cmake --build --preset debug
+ctest --preset debug
+```
+
+Or run the test binary directly:
+
+```bash
+./out/build/debug/test_siyi_commands
+```
+
+Or use the helper script:
+
+```bash
+bash scripts/run_tests.sh
+```
+
+All tests should pass. If you add or modify tests, rebuild and rerun as above.
+
+---
+
+## Protocol Definitions as YAML
 
 ## Protocol Definitions as YAML
 

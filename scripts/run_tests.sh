@@ -23,10 +23,12 @@ fi
 echo "Building tests..."
 cd "$PROJECT_DIR"
 g++ -std=c++17 -I"$TESTS_DIR" -Iinclude \
-    tests/test_shared_camera_base.cpp \
-    tests/test_zr30_camera.cpp \
-    src/camera/shared_camera_base.cpp \
-    src/camera/zr30_camera.cpp \
+    tests/test_shared_camera_model.cpp \
+    tests/test_optical_zoom_camera_model.cpp \
+    tests/test_zr30_camera_model.cpp \
+    src/camera/shared_camera_model.cpp \
+    src/camera/zr30_camera_model.cpp \
+    src/camera/optical_zoom_camera_model.cpp \
     src/helper/log_manager.cpp \
     -o test_runner
 
