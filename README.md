@@ -11,6 +11,7 @@ Highlights:
 - CLI demo app for real camera testing over UDP
 - Unit tests with doctest
 
+
 ## Build with VS Code CMake Tools
 
 This repository now includes `CMakePresets.json`, so CMake Tools can configure/build directly.
@@ -28,6 +29,79 @@ cmake --preset debug
 cmake --build --preset debug
 ctest --preset debug
 ```
+
+---
+
+## Using the SDK as a Library in Another Project
+
+You can integrate this SDK in two ways, depending on your workflow.
+
+### Option A: Add as a Submodule + `add_subdirectory` (Best for active co-development)
+
+#### 1. Add as a submodule
+
+In your project root:
+
+```bash
+git submodule add <this-repo-url> external/siyi-sdk-cpp
+git submodule update --init --recursive
+```
+
+#### 2. Add as a subdirectory in CMake
+
+In your project's `CMakeLists.txt`:
+
+```cmake
+add_subdirectory(external/siyi-sdk-cpp)
+
+# Example: link your target to the SDK static library
+target_link_libraries(your_target PRIVATE siyi_sdk)
+```
+
+`siyi_sdk` publishes its include directory as `PUBLIC`, so extra include paths are usually not required.
+
+### Option B: Install + `find_package` (Best for clean external consumption)
+
+#### 1. Build and install this SDK
+
+From the SDK repository root:
+
+```bash
+cmake --preset release
+cmake --build --preset release
+cmake --install build/release --prefix build/release
+```
+
+#### 2. Consume it from another project
+
+In your consumer `CMakeLists.txt`:
+
+```cmake
+list(APPEND CMAKE_PREFIX_PATH "/absolute/path/to/siyi-sdk-install")
+
+find_package(siyi_sdk CONFIG REQUIRED)
+target_link_libraries(your_target PRIVATE siyi_sdk::siyi_sdk)
+```
+
+You can also pass the prefix at configure time instead of editing `CMAKE_PREFIX_PATH`:
+
+```bash
+cmake -S . -B build -DCMAKE_PREFIX_PATH=/absolute/path/to/siyi-sdk-install
+```
+
+### Include Headers in Your Code
+
+Include the relevant headers from `include/camera/core/`, `include/camera/models/`, etc. For example:
+
+```cpp
+#include <camera/models/zr30_camera_model.hpp>
+#include <camera/core/camera_command_interface.hpp>
+// ...
+```
+
+Build your project normally after linking to either `siyi_sdk` (subdirectory mode) or `siyi_sdk::siyi_sdk` (package mode).
+
+---
 
 
 ## Project Tree
@@ -114,8 +188,6 @@ All tests should pass. If you add or modify tests, rebuild and rerun as above.
 
 ## Protocol Definitions as YAML
 
-## Protocol Definitions as YAML
-
 Command and telemetry definitions are maintained in:
 
 - `protocol/tc/definitions.yaml`
@@ -140,8 +212,8 @@ Supported TM field types in the generator are: `uint8`, `int8`, `uint16_le`, `in
 
 The following headers are generated from these YAML files:
 
-- `include/camera/enum/tc_parameter.hpp`
-- `include/camera/enum/tm_parameters.hpp`
+- `include/camera/protocol/tc_parameter.hpp`
+- `include/camera/protocol/tm_parameters.hpp`
 
 Do not edit those generated headers manually.
 

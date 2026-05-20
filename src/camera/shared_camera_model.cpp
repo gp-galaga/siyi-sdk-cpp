@@ -1,4 +1,4 @@
-#include "../../include/camera/models/shared_camera_model.hpp"
+#include "../../include/siyi/camera/models/shared_camera_model.hpp"
 
 #include <algorithm>
 #include <array>

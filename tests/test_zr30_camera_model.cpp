@@ -1,6 +1,6 @@
 #include "doctest.h"
 
-#include "../include/camera/models/zr30_camera_model.hpp"
+#include "../include/siyi/camera/models/zr30_camera_model.hpp"
 
 namespace SIYI
 {

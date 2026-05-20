@@ -1,8 +1,8 @@
-#include "../include/camera/models/zr30_camera_model.hpp"
-#include "../include/camera/core/ack_policy.hpp"
-#include "../include/transport/itransport.hpp"
-#include "../include/transport/tcp_transport.hpp"
-#include "../include/transport/udp_transport.hpp"
+#include "../include/siyi/camera/models/zr30_camera_model.hpp"
+#include "../include/siyi/camera/core/ack_policy.hpp"
+#include "../include/siyi/transport/itransport.hpp"
+#include "../include/siyi/transport/tcp_transport.hpp"
+#include "../include/siyi/transport/udp_transport.hpp"
 
 #include <cerrno>
 #include <cmath>

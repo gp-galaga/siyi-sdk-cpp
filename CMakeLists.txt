@@ -1,8 +1,11 @@
 cmake_minimum_required(VERSION 3.15)
-project(SIYI_SDK_CPP CXX)
+project(SIYI_SDK_CPP VERSION 0.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
 
 find_package(Python3 COMPONENTS Interpreter QUIET)
 
@@ -27,7 +30,45 @@ set(SIYI_SOURCES
 
 # Create library
 add_library(siyi_sdk ${SIYI_SOURCES})
-target_include_directories(siyi_sdk PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+add_library(siyi_sdk::siyi_sdk ALIAS siyi_sdk)
+
+target_include_directories(siyi_sdk
+    PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+
+set_target_properties(siyi_sdk PROPERTIES EXPORT_NAME siyi_sdk)
+
+set(SIYI_SDK_CMAKE_INSTALL_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/siyi_sdk")
+
+configure_package_config_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/siyi_sdkConfig.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/siyi_sdkConfig.cmake
+    INSTALL_DESTINATION ${SIYI_SDK_CMAKE_INSTALL_DIR})
+
+write_basic_package_version_file(
+    ${CMAKE_CURRENT_BINARY_DIR}/siyi_sdkConfigVersion.cmake
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY SameMajorVersion)
+
+install(TARGETS siyi_sdk
+    EXPORT siyi_sdkTargets
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
+install(EXPORT siyi_sdkTargets
+    FILE siyi_sdkTargets.cmake
+    NAMESPACE siyi_sdk::
+    DESTINATION ${SIYI_SDK_CMAKE_INSTALL_DIR})
+
+install(FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/siyi_sdkConfig.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/siyi_sdkConfigVersion.cmake
+    DESTINATION ${SIYI_SDK_CMAKE_INSTALL_DIR})
 
 add_executable(siyi_demo apps/main.cpp)
 target_link_libraries(siyi_demo PRIVATE siyi_sdk)

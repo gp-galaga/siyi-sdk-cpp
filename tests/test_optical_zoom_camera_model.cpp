@@ -1,6 +1,6 @@
 #include "doctest.h"
 
-#include "../include/camera/models/optical_zoom_camera_model.hpp"
+#include "../include/siyi/camera/models/optical_zoom_camera_model.hpp"
 
 namespace SIYI
 {

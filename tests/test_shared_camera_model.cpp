@@ -1,8 +1,8 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest.h"
 
-#include "../include/camera/core/ack_policy.hpp"
-#include "../include/camera/models/shared_camera_model.hpp"
+#include "../include/siyi/camera/core/ack_policy.hpp"
+#include "../include/siyi/camera/models/shared_camera_model.hpp"
 
 namespace SIYI
 {
