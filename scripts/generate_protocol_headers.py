@@ -2,8 +2,8 @@
 """Generate protocol headers from YAML definitions.
 
 This script updates:
-    - include/camera/protocol/cmd_parameter.hpp (from protocol/tc/definitions.yaml)
-    - include/camera/protocol/tm_parameters.hpp  (from protocol/tm/definitions.yaml)
+    - include/siyi/camera/protocol/tc_parameter.hpp (from protocol/tc/definitions.yaml)
+    - include/siyi/camera/protocol/tm_parameters.hpp (from protocol/tm/definitions.yaml)
 """
 
 from __future__ import annotations
@@ -395,11 +395,21 @@ def main() -> int:
     root = Path(args.root).resolve()
     tc_yaml_path = root / "protocol" / "tc" / "definitions.yaml"
     tm_yaml_path = root / "protocol" / "tm" / "definitions.yaml"
-    out_cmd = root / "include" / "camera" / "protocol" / "tc_parameter.hpp"
-    out_tm = root / "include" / "camera" / "protocol" / "tm_parameters.hpp"
+
+    include_root_candidates = [
+        root / "include" / "siyi",
+        root / "include",
+    ]
+    include_root = next((path for path in include_root_candidates if path.exists()), include_root_candidates[0])
+
+    out_cmd = include_root / "camera" / "protocol" / "tc_parameter.hpp"
+    out_tm = include_root / "camera" / "protocol" / "tm_parameters.hpp"
 
     tc_data = _load_yaml(tc_yaml_path)
     tm_data = _load_yaml(tm_yaml_path)
+
+    out_cmd.parent.mkdir(parents=True, exist_ok=True)
+    out_tm.parent.mkdir(parents=True, exist_ok=True)
 
     out_cmd.write_text(_render_cmd_parameter(tc_data), encoding="utf-8")
     out_tm.write_text(_render_tm_parameter(tm_data), encoding="utf-8")
