@@ -298,6 +298,48 @@ namespace SIYI
             CHECK(info->AsFuncFeedbackInfoType() == TM::FeedbackInfoType::HDR_ON);
         }
 
+        TEST_CASE("Decode typed firmware-version telemetry")
+        {
+            TestBaseCamera camera;
+
+            SIYIPacket packet;
+            packet.ctrl = MakeDeviceAckControlByte();
+            packet.cmdId = static_cast<uint8_t>(CommandId::ACQUIRE_FW_VER);
+            packet.data = {0x04, 0x03, 0x02, 0x01, 0x08, 0x07, 0x06, 0x05, 0x0C, 0x0B, 0x0A, 0x09};
+            packet.dataLen = static_cast<uint16_t>(packet.data.size());
+
+            TM::TelemetryMessage message;
+            std::string error;
+            REQUIRE(camera.DecodeTelemetryPacket(packet, message, &error));
+
+            const auto* fw = std::get_if<TM::FirmwareVersion>(&message);
+            REQUIRE(fw != nullptr);
+            CHECK(fw->cameraFirmwareVersion == 0x01020304U);
+            CHECK(fw->gimbalFirmwareVersion == 0x05060708U);
+            CHECK(fw->zoomFirmwareVersion == 0x090A0B0CU);
+        }
+
+        TEST_CASE("Decode one-byte payload as generic command status ack")
+        {
+            TestBaseCamera camera;
+
+            SIYIPacket packet;
+            packet.ctrl = MakeDeviceAckControlByte();
+            packet.cmdId = static_cast<uint8_t>(CommandId::CENTER);
+            packet.data = {0x01};
+            packet.dataLen = static_cast<uint16_t>(packet.data.size());
+
+            TM::TelemetryMessage message;
+            std::string error;
+            REQUIRE(camera.DecodeTelemetryPacket(packet, message, &error));
+
+            const auto* ack = std::get_if<TM::CommandStatusAck>(&message);
+            REQUIRE(ack != nullptr);
+            CHECK(ack->cmdId == static_cast<uint8_t>(CommandId::CENTER));
+            CHECK(ack->status == 0x01);
+            CHECK(ack->IsSuccess());
+        }
+
         TEST_CASE("Reject invalid function-feedback payload length")
         {
             TestBaseCamera camera;

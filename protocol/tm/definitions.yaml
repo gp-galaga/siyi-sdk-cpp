@@ -102,6 +102,17 @@ typed_messages:
       - name: gimbalModel
         type: uint8
 
+  - name: FirmwareVersion
+    cmd_id: ACQUIRE_FW_VER
+    payload_len: 12
+    fields:
+      - name: cameraFirmwareVersion
+        type: uint32_le
+      - name: gimbalFirmwareVersion
+        type: uint32_le
+      - name: zoomFirmwareVersion
+        type: uint32_le
+
   - name: GimbalWorkingMode
     cmd_id: ACQUIRE_WORKING_MODE
     payload_len: 1

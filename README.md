@@ -165,6 +165,7 @@ You can run all unit tests manually using CMake presets or the provided script. 
 **Recommended (from repo root):**
 
 ```bash
+python3 scripts/generate_protocol_headers.py 
 cmake --preset debug
 cmake --build --preset debug
 ctest --preset debug

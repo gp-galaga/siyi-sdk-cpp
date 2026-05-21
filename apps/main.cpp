@@ -618,6 +618,13 @@ int main(int argc, char** argv)
             std::cout << "Decoded typed telemetry (GimbalHardwareId):\n";
             std::cout << "  gimbal_model: " << static_cast<unsigned int>(hardwareId->gimbalModel) << "\n";
         }
+        else if (const auto* fw = std::get_if<SIYI::TM::FirmwareVersion>(&tmMessage); fw != nullptr)
+        {
+            std::cout << "Decoded typed telemetry (FirmwareVersion):\n";
+            std::cout << "  camera_firmware_version: " << fw->cameraFirmwareVersion << "\n";
+            std::cout << "  gimbal_firmware_version: " << fw->gimbalFirmwareVersion << "\n";
+            std::cout << "  zoom_firmware_version: " << fw->zoomFirmwareVersion << "\n";
+        }
         else if (const auto* ack = std::get_if<SIYI::TM::SetGimbalAngleAck>(&tmMessage); ack != nullptr)
         {
             std::cout << "Decoded typed telemetry (SetGimbalAngleAck):\n";
@@ -629,6 +636,20 @@ int main(int argc, char** argv)
         {
             std::cout << "Decoded typed telemetry (FuncFeedbackInfo):\n";
             std::cout << "  infoType: " << static_cast<unsigned int>(info->infoType) << "\n";
+        }
+        else if (const auto* ack = std::get_if<SIYI::TM::CommandStatusAck>(&tmMessage); ack != nullptr)
+        {
+            std::cout << "Decoded typed telemetry (CommandStatusAck):\n";
+            std::cout << "  cmd_id: 0x" << std::hex << static_cast<unsigned int>(ack->cmdId) << std::dec << "\n";
+            std::cout << "  command_name: " << ack->CommandName() << "\n";
+            std::cout << "  status: " << static_cast<unsigned int>(ack->status)
+                      << (ack->IsSuccess() ? " (success)" : " (failure)") << "\n";
+        }
+        else if (const auto* unknown = std::get_if<SIYI::TM::UnknownTelemetry>(&tmMessage); unknown != nullptr)
+        {
+            std::cout << "Decoded typed telemetry (UnknownTelemetry):\n";
+            std::cout << "  cmd_id: 0x" << std::hex << static_cast<unsigned int>(unknown->cmdId) << std::dec << "\n";
+            std::cout << "  data: " << SIYI::BytesToHex(unknown->data) << "\n";
         }
     }
 

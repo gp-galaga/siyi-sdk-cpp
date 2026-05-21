@@ -66,6 +66,14 @@ namespace SIYI
                 static_cast<uint16_t>(data[index]) |
                 static_cast<uint16_t>(data[index + 1] << 8));
         }
+
+        uint32_t ReadU32Le(const std::vector<uint8_t> &data, size_t index)
+        {
+            return static_cast<uint32_t>(data[index]) |
+                   (static_cast<uint32_t>(data[index + 1]) << 8) |
+                   (static_cast<uint32_t>(data[index + 2]) << 16) |
+                   (static_cast<uint32_t>(data[index + 3]) << 24);
+        }
     } // namespace CRC16
 
     SharedCameraModel::SharedCameraModel(int16_t pitchMin, int16_t pitchMax,
@@ -583,6 +591,27 @@ namespace SIYI
             return true;
         }
 
+        if (packet.cmdId == static_cast<uint8_t>(CommandId::ACQUIRE_FW_VER))
+        {
+            constexpr size_t kExpectedLen = 12;
+            if (packet.data.size() != kExpectedLen)
+            {
+                if (error != nullptr)
+                {
+                    *error = "ACQUIRE_FW_VER payload must be exactly 12 bytes";
+                }
+                return false;
+            }
+
+            TM::FirmwareVersion fwVersion;
+            fwVersion.cameraFirmwareVersion = CRC16::ReadU32Le(packet.data, 0);
+            fwVersion.gimbalFirmwareVersion = CRC16::ReadU32Le(packet.data, 4);
+            fwVersion.zoomFirmwareVersion = CRC16::ReadU32Le(packet.data, 8);
+
+            outMessage = fwVersion;
+            return true;
+        }
+
         if (packet.cmdId == static_cast<uint8_t>(CommandId::SET_GIMBAL_ANGLE))
         {
             constexpr size_t kExpectedLen = 6;
@@ -623,11 +652,24 @@ namespace SIYI
             return true;
         }
 
+        if (packet.data.size() == 1)
+        {
+            TM::CommandStatusAck statusAck;
+            statusAck.cmdId = packet.cmdId;
+            statusAck.status = packet.data[0];
+            outMessage = statusAck;
+            return true;
+        }
+
+        TM::UnknownTelemetry unknown;
+        unknown.cmdId = packet.cmdId;
+        unknown.data = packet.data;
+        outMessage = std::move(unknown);
         if (error != nullptr)
         {
             *error = "unsupported telemetry cmd_id for typed decoding";
         }
-        return false;
+        return true;
     }
 
     bool SharedCameraModel::DecodeTelemetryFrame(
