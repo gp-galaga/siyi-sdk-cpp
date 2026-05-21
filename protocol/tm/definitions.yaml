@@ -101,6 +101,8 @@ typed_messages:
     fields:
       - name: gimbalModel
         type: uint8
+        enum_type: gimbal_models
+        enum_helper: AsGimbalModel
 
   - name: FirmwareVersion
     cmd_id: ACQUIRE_FW_VER
