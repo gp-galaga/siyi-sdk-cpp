@@ -23,6 +23,8 @@ set(SIYI_SOURCES
     src/camera/shared_camera_model.cpp
     src/camera/optical_zoom_camera_model.cpp
     src/camera/zr30_camera_model.cpp
+    src/camera/managers/camera_manager.cpp
+    src/camera/factories/camera_model_factory.cpp
     src/transport/udp_transport.cpp
     src/transport/tcp_transport.cpp
     src/helper/log_manager.cpp

@@ -1,49 +1,36 @@
-#include "../../include/siyi/helper/ilog_manager.hpp"
+#include "../../include/siyi/helper/log_manager.hpp"
 
 namespace SIYI
 {
     namespace helper
     {
-        void LogManager::PrintError(const std::string& message) const
-        {
-            Print(MessageType::ERROR, message);
-        }
+        LogManager::LogManager(std::string projectName) : ILogManager(std::move(projectName)) {}
 
-        void LogManager::PrintWarning(const std::string& message) const
+        const char* LogManager::ToText(const MessageType type) const
         {
-            Print(MessageType::WARNING, message);
-        }
+            switch (type)
+            {
+                case MessageType::DEBUG:
+                    return "DEBUG";
+                case MessageType::INFO:
+                    return "INFO";
+                case MessageType::ERROR:
+                    return "ERROR";
+                case MessageType::WARNING:
+                    return "WARNING";
+            }
 
-        void LogManager::PrintInfo(const std::string& message) const
-        {
-            Print(MessageType::INFO, message);
-        }
-
-        void LogManager::PrintDebug(const std::string& message) const
-        {
-            Print(MessageType::DEBUG, message);
+            return "UNKNOWN";
         }
 
         void LogManager::Print(const MessageType type, const std::string& message) const
         {
-            std::cout << '[' << ToText(type) << "] " << this->projectName_ << ": " << message << std::endl;
+            std::cout << '[' << ToText(type) << "] [" << projectName_ << "]: " << message << std::endl;
         }
 
-        const char* LogManager::ToText(const MessageType type)
+        std::shared_ptr<ILogManager> CreateConsoleLogger(std::string projectName)
         {
-            switch (type)
-            {
-            case MessageType::DEBUG:
-                return "DEBUG";
-            case MessageType::INFO:
-                return "INFO";
-            case MessageType::ERROR:
-                return "ERROR";
-            case MessageType::WARNING:
-                return "WARNING";
-            }
-
-            return "UNKNOWN";
+            return std::make_shared<LogManager>(std::move(projectName));
         }
     } // namespace helper
 } // namespace SIYI

@@ -1,9 +1,12 @@
 #include "../../include/siyi/camera/models/shared_camera_model.hpp"
+#include "../../include/siyi/helper/log_manager.hpp"
 
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <cstdlib>
 #include <iomanip>
+#include <stdexcept>
 #include <sstream>
 #include <math.h>
 
@@ -69,25 +72,31 @@ namespace SIYI
                                          int16_t yawMin, int16_t yawMax,
                                          int16_t rollMin, int16_t rollMax,
                                          std::shared_ptr<TelecommandSession> session)
-        : ICommandCamera(std::move(session))
-    {
-        pitch_min_ = pitchMin;
-        pitch_max_ = pitchMax;
-        yaw_min_ = yawMin;
-        yaw_max_ = yawMax;
-        roll_min_ = rollMin;
-        roll_max_ = rollMax;
-    }
+        : ICommandCamera(std::move(session)),
+                    logger_(helper::CreateConsoleLogger("SharedCameraModel")),
+                    cameraName_("SharedCameraModel"),
+          pitch_min_(pitchMin),
+          pitch_max_(pitchMax),
+          yaw_min_(yawMin),
+          yaw_max_(yawMax),
+          roll_min_(rollMin),
+          roll_max_(rollMax) {
+          };
 
     SharedCameraModel::SharedCameraModel(int16_t pitchMin, int16_t pitchMax,
                                          int16_t yawMin, int16_t yawMax,
                                          int16_t rollMin, int16_t rollMax,
                                          int16_t zoomMin, int16_t zoomMax,
                                          std::shared_ptr<TelecommandSession> session)
-        : SharedCameraModel(pitchMin, pitchMax, yawMin, yawMax, rollMin, rollMax, std::move(session))
-    {
+        : SharedCameraModel(pitchMin, pitchMax, yawMin, yawMax, rollMin, rollMax, std::move(session)) {
         zoom_min_ = zoomMin;
         zoom_max_ = zoomMax;
+    }
+
+    void SharedCameraModel::SetCameraName(const std::string &cameraName)
+    {
+        cameraName_ = cameraName;
+        logger_ = helper::CreateConsoleLogger(cameraName_);
     }
 
     uint16_t Crc16Ccitt(const std::vector<uint8_t> &data)
@@ -401,6 +410,31 @@ namespace SIYI
             ControlFlag::NEED_ACK);
     }
 
+    std::vector<uint8_t> SharedCameraModel::SetManualZoom(ManualZoomDirection) const
+    {
+        throw std::logic_error(cameraName_ + " does not support manual zoom commands");
+    }
+
+    std::vector<uint8_t> SharedCameraModel::AutoFocus(uint16_t, uint16_t) const
+    {
+        throw std::logic_error(cameraName_ + " does not support auto focus commands");
+    }
+
+    std::vector<uint8_t> SharedCameraModel::SetManualFocus(ManualFocusDirection) const
+    {
+        throw std::logic_error(cameraName_ + " does not support manual focus commands");
+    }
+
+    std::vector<uint8_t> SharedCameraModel::SetAbsoluteZoom(float) const
+    {
+        throw std::logic_error(cameraName_ + " does not support absolute zoom commands");
+    }
+
+    std::vector<uint8_t> SharedCameraModel::SetAbsoluteZoom(int) const
+    {
+        throw std::logic_error(cameraName_ + " does not support absolute zoom commands");
+    }
+
     std::vector<uint8_t> SharedCameraModel::ControlPhotoRecord(
         const PhotoRecordFunction funcType) const
     {
@@ -472,6 +506,34 @@ namespace SIYI
         TM::TelemetryMessage &outMessage,
         std::string *error) const
     {
+        if (packet.cmdId == static_cast<uint8_t>(CommandId::ACQUIRE_HW_ID))
+        {
+            if (packet.data.empty())
+            {
+                if (error != nullptr)
+                {
+                    *error = "ACQUIRE_HW_ID payload must contain at least 1 byte";
+                }
+                return false;
+            }
+
+            TM::GimbalHardwareId hardwareId;
+            hardwareId.gimbalModel = packet.data[0];
+
+            if (packet.data.size() >= 2 &&
+                std::isxdigit(static_cast<unsigned char>(packet.data[0])) &&
+                std::isxdigit(static_cast<unsigned char>(packet.data[1])))
+            {
+                const std::string modelPrefix {
+                    static_cast<char>(packet.data[0]),
+                    static_cast<char>(packet.data[1])};
+                hardwareId.gimbalModel = static_cast<uint8_t>(std::strtoul(modelPrefix.c_str(), nullptr, 16));
+            }
+
+            outMessage = hardwareId;
+            return true;
+        }
+
         if (packet.cmdId == static_cast<uint8_t>(CommandId::ACQUIRE_GIMBAL_CONFIGURATION))
         {
             constexpr size_t kExpectedLen = 7;

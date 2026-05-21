@@ -28,7 +28,7 @@ namespace SIYI
 
             const auto autoFocusFrame = camera.AutoFocus(100, 200);
             const auto manualFocusFrame = camera.SetManualFocus(ManualFocusDirection::LONG_SHOT);
-            const auto absZoomFrame = camera.SetAbsoluteZoom(4, 5);
+            const auto absZoomFrame = camera.SetAbsoluteZoom(static_cast<float>(4.5));
 
             SIYIPacket autoFocusPacket;
             SIYIPacket manualFocusPacket;

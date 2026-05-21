@@ -1,14 +1,11 @@
-#include "../include/siyi/camera/models/zr30_camera_model.hpp"
-#include "../include/siyi/camera/core/ack_policy.hpp"
-#include "../include/siyi/transport/itransport.hpp"
-#include "../include/siyi/transport/tcp_transport.hpp"
-#include "../include/siyi/transport/udp_transport.hpp"
+#include "../include/siyi/camera/managers/camera_manager.hpp"
 
 #include <cerrno>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <exception>
 #include <iostream>
 #include <memory>
 #include <optional>
@@ -137,7 +134,7 @@ namespace
     }
 
     std::optional<std::vector<uint8_t>> BuildCommand(
-        SIYI::ZR30& camera,
+        SIYI::SharedCameraModel& camera,
         const std::vector<std::string>& args,
         const bool needAck)
     {
@@ -272,7 +269,7 @@ namespace
                 std::cerr << "invalid zoom speed: " << args[1] << "\n";
                 return std::nullopt;
             }
-            return camera.SetAbsoluteZoom(zoomSpeed, needAck);
+            return camera.SetAbsoluteZoom(zoomSpeed);
         }
         if (command == "absolute-zoom")
         {
@@ -283,9 +280,9 @@ namespace
             }
 
             float zoomValue = 0.0F;
-            if (!ParseFloat(args[1], zoomValue) || zoomValue < 1.0F || zoomValue > 30.9F)
+            if (!ParseFloat(args[1], zoomValue) || zoomValue < 1.0F || zoomValue > 180.0F)
             {
-                std::cerr << "invalid absolute-zoom value: " << args[1] << " (expected range 1.0 to 30.9)\n";
+                std::cerr << "invalid absolute-zoom value: " << args[1] << " (expected range 1.0 to 180.0)\n";
                 return std::nullopt;
             }
 
@@ -305,7 +302,7 @@ namespace
                 return std::nullopt;
             }
 
-            return camera.SetAbsoluteZoom(int_part, frac_part);
+            return camera.SetAbsoluteZoom(zoomValue);
         }
         if (command == "set-gimbal-angle")
         {
@@ -501,8 +498,30 @@ int main(int argc, char** argv)
         commandArgs.push_back(arg);
     }
 
-    SIYI::ZR30 camera;
-    const auto frame = BuildCommand(camera, commandArgs, needAck);
+    const SIYI::TransportProtocol protocol =
+        (transportName == "tcp") ? SIYI::TransportProtocol::TCP : SIYI::TransportProtocol::UDP;
+
+    std::string connectError;
+    auto manager = SIYI::CameraManager::Connect(ipAddress, port, protocol, timeoutMs, &connectError);
+    if (!manager.has_value())
+    {
+        std::cerr << "camera connect failed: " << connectError << "\n";
+        return 1;
+    }
+
+    auto& camera = manager->Camera();
+
+    std::optional<std::vector<uint8_t>> frame;
+    try
+    {
+        frame = BuildCommand(camera, commandArgs, needAck);
+    }
+    catch (const std::exception& ex)
+    {
+        std::cerr << "command build failed: " << ex.what() << "\n";
+        return 1;
+    }
+
     if (!frame.has_value())
     {
         PrintUsage(argv[0]);
@@ -521,8 +540,6 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    const uint8_t requestCmdId = frame->at(7);
-
     const bool waitForAck = needAck && CommandExpectedToAck(commandArgs);
     if (needAck && !waitForAck)
     {
@@ -532,125 +549,86 @@ int main(int argc, char** argv)
     std::cout << "Sending frame: " << SIYI::BytesToHex(frame.value()) << "\n";
     std::cout << "Sequence: " << (camera.PeekNextSeq() - 1) << "\n";
 
-    std::unique_ptr<SIYI::ITransport> transport;
-    if (transportName == "tcp")
-    {
-        transport = std::make_unique<SIYI::TcpTransport>();
-    }
-    else
-    {
-        transport = std::make_unique<SIYI::UdpTransport>();
-    }
+    SIYI::ExecuteOptions execOptions;
+    execOptions.waitForAck = waitForAck;
+    execOptions.timeoutMs = timeoutMs;
+    execOptions.repeatCount = repeatCount;
+    execOptions.periodMs = periodMs;
+    execOptions.bindPort = bindPort;
 
-    std::string error;
-    if (!transport->Open(ipAddress, port, bindPort, &error))
+    const SIYI::ExecuteResult execResult = manager->Execute(ipAddress, port, protocol, frame.value(), execOptions);
+
+    if (execResult.status != SIYI::ExecuteStatus::OK)
     {
-        std::cerr << "transport open failed: " << error << "\n";
+        std::cerr << "command execution failed: " << execResult.message << "\n";
         return 1;
     }
 
-    bool receivedAnyAck = false;
-
-    for (int n = 0; n < repeatCount; ++n)
+    if (!execResult.lastResponseFrame.empty())
     {
-        if (!transport->Send(*frame, &error))
+        std::cout << "Received frame: " << SIYI::BytesToHex(execResult.lastResponseFrame) << "\n";
+    }
+
+    if (execResult.decodedPacket.has_value())
+    {
+        const SIYI::SIYIPacket& decoded = execResult.decodedPacket.value();
+        std::cout << "Decoded response:\n";
+        std::cout << "  ctrl: 0x" << std::hex << static_cast<unsigned int>(decoded.ctrl) << "\n";
+        std::cout << "  seq: " << std::dec << decoded.seq << "\n";
+        std::cout << "  cmd_id: 0x" << std::hex << static_cast<unsigned int>(decoded.cmdId) << "\n";
+        std::cout << "  data_len: " << std::dec << decoded.dataLen << "\n";
+        std::cout << "  crc16: 0x" << std::hex << decoded.crc16 << "\n";
+        if (!decoded.data.empty())
         {
-            std::cerr << "send failed: " << error << "\n";
-            transport->Close();
-            return 1;
+            std::cout << "  data: " << SIYI::BytesToHex(decoded.data) << "\n";
         }
 
-        if (waitForAck)
+        if (decoded.cmdId == static_cast<uint8_t>(SIYI::CommandId::SET_GIMBAL_ANGLE))
         {
-            std::vector<uint8_t> response;
-            if (!transport->Receive(response, timeoutMs, &error))
-            {
-                std::cerr << "receive failed or timed out (attempt " << (n + 1) << '/' << repeatCount << "): "
-                          << error << "\n";
-            }
-            else
-            {
-                std::cout << "Received frame: " << SIYI::BytesToHex(response) << "\n";
-
-                SIYI::SIYIPacket decoded;
-                if (!camera.DecodeFrame(response, decoded, &error))
-                {
-                    std::cerr << "Response decode failed: " << error << "\n";
-                }
-                else
-                {
-                    if (waitForAck && !SIYI::AckPolicy::IsExpectedAckCmdIdForRequest(decoded.cmdId, requestCmdId))
-                    {
-                        std::cout << "  note: received unrelated response cmd_id 0x" << std::hex
-                                  << static_cast<unsigned int>(decoded.cmdId)
-                                  << ", expected 0x" << static_cast<unsigned int>(SIYI::AckPolicy::ExpectedAckCmdIdForRequest(requestCmdId))
-                                  << "\n";
-                    }
-                    else
-                    {
-                        receivedAnyAck = true;
-                    }
-
-                    std::cout << "Decoded response:\n";
-                    std::cout << "  ctrl: 0x" << std::hex << static_cast<unsigned int>(decoded.ctrl) << "\n";
-                    std::cout << "  seq: " << std::dec << decoded.seq << "\n";
-                    std::cout << "  cmd_id: 0x" << std::hex << static_cast<unsigned int>(decoded.cmdId) << "\n";
-                    std::cout << "  data_len: " << std::dec << decoded.dataLen << "\n";
-                    std::cout << "  crc16: 0x" << std::hex << decoded.crc16 << "\n";
-                    if (!decoded.data.empty())
-                    {
-                        std::cout << "  data: " << SIYI::BytesToHex(decoded.data) << "\n";
-                    }
-
-                    if (decoded.cmdId == static_cast<uint8_t>(SIYI::CommandId::SET_GIMBAL_ANGLE))
-                    {
-                        std::cout << "  ack_name: SetGimbalAngleAck\n";
-                    }
-
-                    SIYI::TM::TelemetryMessage tmMessage;
-                    if (camera.DecodeTelemetryPacket(decoded, tmMessage, &error))
-                    {
-                        if (const auto* att = std::get_if<SIYI::TM::GimbalAttitude>(&tmMessage); att != nullptr)
-                        {
-                            std::cout << "Decoded typed telemetry (Gimbal Attitude):\n";
-                            std::cout << "  yaw: " << att->yaw << " (" << att->YawDeg() << " deg)\n";
-                            std::cout << "  pitch: " << att->pitch << " (" << att->PitchDeg() << " deg)\n";
-                            std::cout << "  roll: " << att->roll << " (" << att->RollDeg() << " deg)\n";
-                            std::cout << "  yaw_velocity: " << att->yawVelocity << " (" << att->YawVelocityDegPerSec() << " deg/s)\n";
-                            std::cout << "  pitch_velocity: " << att->pitchVelocity << " (" << att->PitchVelocityDegPerSec() << " deg/s)\n";
-                            std::cout << "  roll_velocity: " << att->rollVelocity << " (" << att->RollVelocityDegPerSec() << " deg/s)\n";
-                        }
-                        else if (const auto* info = std::get_if<SIYI::TM::GimbalConfiguration>(&tmMessage); info != nullptr)
-                        {
-                            std::cout << "Decoded typed telemetry (Gimbal Configuration):\n";
-                            std::cout << "  reserved0: " << static_cast<unsigned int>(info->reserved0) << "\n";
-                            std::cout << "  hdr_status: " << static_cast<unsigned int>(info->hdrStatus) << "\n";
-                            std::cout << "  reserved1: " << static_cast<unsigned int>(info->reserved1) << "\n";
-                            std::cout << "  record_status: " << static_cast<unsigned int>(info->recordStatus) << "\n";
-                            std::cout << "  gimbal_motion_mode: " << static_cast<unsigned int>(info->gimbalMotionMode) << "\n";
-                            std::cout << "  gimbal_mounting_method: " << static_cast<unsigned int>(info->gimbalMountingMethod) << "\n";
-                            std::cout << "  video_hdmi_or_cvbs: " << static_cast<unsigned int>(info->video_hdmi_or_cvbs) << "\n";
-                        }
-                        else if (const auto* ack = std::get_if<SIYI::TM::SetGimbalAngleAck>(&tmMessage); ack != nullptr)
-                        {
-                            std::cout << "Decoded typed telemetry (SetGimbalAngleAck):\n";
-                            std::cout << "  currentYawAngle: " << ack->currentYawAngle << " (" << ack->YawDeg() << " deg)\n";
-                            std::cout << "  currentPitchAngle: " << ack->currentPitchAngle << " (" << ack->PitchDeg() << " deg)\n";
-                            std::cout << "  currentRollAngle: " << ack->currentRollAngle << " (" << ack->RollDeg() << " deg)\n";
-                        }
-                        else if (const auto* info = std::get_if<SIYI::TM::FuncFeedbackInfo>(&tmMessage); info != nullptr)
-                        {
-                            std::cout << "Decoded typed telemetry (FuncFeedbackInfo):\n";
-                            std::cout << "  infoType: " << static_cast<unsigned int>(info->infoType) << "\n";
-                        }
-                    }
-                }
-            }
+            std::cout << "  ack_name: SetGimbalAngleAck\n";
         }
+    }
 
-        if (n + 1 < repeatCount && periodMs > 0)
+    if (execResult.telemetry.has_value())
+    {
+        const SIYI::TM::TelemetryMessage& tmMessage = execResult.telemetry.value();
+        if (const auto* att = std::get_if<SIYI::TM::GimbalAttitude>(&tmMessage); att != nullptr)
         {
-            std::this_thread::sleep_for(std::chrono::milliseconds(periodMs));
+            std::cout << "Decoded typed telemetry (Gimbal Attitude):\n";
+            std::cout << "  yaw: " << att->yaw << " (" << att->YawDeg() << " deg)\n";
+            std::cout << "  pitch: " << att->pitch << " (" << att->PitchDeg() << " deg)\n";
+            std::cout << "  roll: " << att->roll << " (" << att->RollDeg() << " deg)\n";
+            std::cout << "  yaw_velocity: " << att->yawVelocity << " (" << att->YawVelocityDegPerSec() << " deg/s)\n";
+            std::cout << "  pitch_velocity: " << att->pitchVelocity << " (" << att->PitchVelocityDegPerSec() << " deg/s)\n";
+            std::cout << "  roll_velocity: " << att->rollVelocity << " (" << att->RollVelocityDegPerSec() << " deg/s)\n";
+        }
+        else if (const auto* info = std::get_if<SIYI::TM::GimbalConfiguration>(&tmMessage); info != nullptr)
+        {
+            std::cout << "Decoded typed telemetry (Gimbal Configuration):\n";
+            std::cout << "  reserved0: " << static_cast<unsigned int>(info->reserved0) << "\n";
+            std::cout << "  hdr_status: " << static_cast<unsigned int>(info->hdrStatus) << "\n";
+            std::cout << "  reserved1: " << static_cast<unsigned int>(info->reserved1) << "\n";
+            std::cout << "  record_status: " << static_cast<unsigned int>(info->recordStatus) << "\n";
+            std::cout << "  gimbal_motion_mode: " << static_cast<unsigned int>(info->gimbalMotionMode) << "\n";
+            std::cout << "  gimbal_mounting_method: " << static_cast<unsigned int>(info->gimbalMountingMethod) << "\n";
+            std::cout << "  video_hdmi_or_cvbs: " << static_cast<unsigned int>(info->video_hdmi_or_cvbs) << "\n";
+        }
+        else if (const auto* hardwareId = std::get_if<SIYI::TM::GimbalHardwareId>(&tmMessage); hardwareId != nullptr)
+        {
+            std::cout << "Decoded typed telemetry (GimbalHardwareId):\n";
+            std::cout << "  gimbal_model: " << static_cast<unsigned int>(hardwareId->gimbalModel) << "\n";
+        }
+        else if (const auto* ack = std::get_if<SIYI::TM::SetGimbalAngleAck>(&tmMessage); ack != nullptr)
+        {
+            std::cout << "Decoded typed telemetry (SetGimbalAngleAck):\n";
+            std::cout << "  currentYawAngle: " << ack->currentYawAngle << " (" << ack->YawDeg() << " deg)\n";
+            std::cout << "  currentPitchAngle: " << ack->currentPitchAngle << " (" << ack->PitchDeg() << " deg)\n";
+            std::cout << "  currentRollAngle: " << ack->currentRollAngle << " (" << ack->RollDeg() << " deg)\n";
+        }
+        else if (const auto* info = std::get_if<SIYI::TM::FuncFeedbackInfo>(&tmMessage); info != nullptr)
+        {
+            std::cout << "Decoded typed telemetry (FuncFeedbackInfo):\n";
+            std::cout << "  infoType: " << static_cast<unsigned int>(info->infoType) << "\n";
         }
     }
 
@@ -658,13 +636,6 @@ int main(int argc, char** argv)
     {
         std::cout << "Command sent without ACK request.\n";
     }
-    else if (!receivedAnyAck)
-    {
-        std::cerr << "No ACK received for any attempt.\n";
-        transport->Close();
-        return 1;
-    }
 
-    transport->Close();
     return 0;
 }

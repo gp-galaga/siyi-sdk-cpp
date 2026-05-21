@@ -71,17 +71,17 @@ namespace SIYI
             CHECK(packet.data == std::vector<uint8_t>({0xFF}));
         }
 
-        TEST_CASE("SetAbsoluteZoom int-frac overload encodes expected payload")
+        TEST_CASE("SetAbsoluteZoom int overload encodes expected payload")
         {
             OpticalZoomTestBaseCamera camera;
-            const auto frame = camera.SetAbsoluteZoom(4, 5);
+            const auto frame = camera.SetAbsoluteZoom(4);
 
             SIYIPacket packet;
             REQUIRE(camera.DecodeFrame(frame, packet));
 
             CHECK(packet.ctrl == static_cast<uint8_t>(ControlFlag::NEED_ACK));
             CHECK(packet.cmdId == static_cast<uint8_t>(CommandId::ABSOLUTE_ZOOM));
-            CHECK(packet.data == std::vector<uint8_t>({0x04, 0x05}));
+            CHECK(packet.data == std::vector<uint8_t>({0x04, 0x00}));
         }
 
         TEST_CASE("SetAbsoluteZoom float overload converts and clamps")
@@ -89,7 +89,7 @@ namespace SIYI
             OpticalZoomTestBaseCamera camera;
 
             const auto frameRounded = camera.SetAbsoluteZoom(4.5F);
-            const auto frameClamped = camera.SetAbsoluteZoom(31.2F);
+            const auto frameClamped = camera.SetAbsoluteZoom(231.2F);
             const auto frameClampedLow = camera.SetAbsoluteZoom(-5.0F);
             const auto frameBoundary = camera.SetAbsoluteZoom(10.0F);
 
@@ -103,7 +103,7 @@ namespace SIYI
             REQUIRE(camera.DecodeFrame(frameBoundary, boundaryPacket));
 
             CHECK(roundedPacket.data == std::vector<uint8_t>({0x04, 0x05}));
-            CHECK(clampedPacket.data == std::vector<uint8_t>({0x0A, 0x00}));
+            CHECK(clampedPacket.data == std::vector<uint8_t>({0xB4, 0x00}));
             CHECK(clampedLowPacket.data == std::vector<uint8_t>({0x00, 0x00}));
             CHECK(boundaryPacket.data == std::vector<uint8_t>({0x0A, 0x00}));
         }

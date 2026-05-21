@@ -11,7 +11,7 @@
       "displayName": "Debug",
       "description": "Debug build with tests enabled",
       "generator": "Unix Makefiles",
-      "binaryDir": "${sourceDir}/out/build/${presetName}",
+      "binaryDir": "${sourceDir}/build/${presetName}",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",

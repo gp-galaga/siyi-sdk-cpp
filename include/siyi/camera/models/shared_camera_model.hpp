@@ -3,6 +3,7 @@
 
 #include "../core/camera_command_interface.hpp"
 #include "../core/telemetry_decoder_interface.hpp"
+#include "../../helper/ilog_manager.hpp"
 
 #include <array>
 #include <cstdint>
@@ -39,6 +40,8 @@ namespace SIYI
 
     class SharedCameraModel : public ICommandCamera, public ITelemetryDecoder {
         public:
+            virtual ~SharedCameraModel() = default;
+
             explicit SharedCameraModel(int16_t pitchMin, int16_t pitchMax,
                                        int16_t yawMin, int16_t yawMax,
                                        int16_t rollMin, int16_t rollMax,
@@ -93,6 +96,16 @@ namespace SIYI
 
             std::vector<uint8_t> SoftRestart(bool rebootCamera, bool resetGimbal) const;
 
+            virtual std::vector<uint8_t> SetManualZoom(ManualZoomDirection direction) const;
+
+            virtual std::vector<uint8_t> AutoFocus(uint16_t x_coord, uint16_t y_coord) const;
+
+            virtual std::vector<uint8_t> SetManualFocus(ManualFocusDirection direction) const;
+
+            virtual std::vector<uint8_t> SetAbsoluteZoom(float zoomValue) const;
+
+            virtual std::vector<uint8_t> SetAbsoluteZoom(int zoomValue) const;
+
             std::vector<uint8_t> BuildCustomCommand(uint8_t cmdId, const std::vector<uint8_t>& payload, bool needAck = true) const override;
 
 
@@ -125,11 +138,12 @@ namespace SIYI
         protected:
             std::vector<uint8_t> SetGimbalAngleRaw(int16_t yaw, int16_t pitch) const;
 
+            void SetCameraName(const std::string& cameraName);
+
             bool IsPitchWithin(int16_t value) const noexcept { return value >= pitch_min_ && value <= pitch_max_; }
             bool IsPitchWithin(float value) const noexcept { return value >= static_cast<float>(pitch_min_) && value <= static_cast<float>(pitch_max_); }
             bool IsYawWithin(int16_t value) const noexcept { return value >= yaw_min_ && value <= yaw_max_; }
             bool IsYawWithin(float value) const noexcept { return value >= static_cast<float>(yaw_min_) && value <= static_cast<float>(yaw_max_); }
-
             std::vector<uint8_t> BuildPacket(
                 uint8_t cmdId,
                 const std::vector<uint8_t>& payload,
@@ -143,6 +157,9 @@ namespace SIYI
             int16_t roll_max_ {0};
             int16_t zoom_min_ {1};
             int16_t zoom_max_ {1};
+            
+            std::shared_ptr<helper::ILogManager> logger_;
+            std::string cameraName_ = "undefined";
         };
 }
 

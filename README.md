@@ -173,7 +173,7 @@ ctest --preset debug
 Or run the test binary directly:
 
 ```bash
-./out/build/debug/test_siyi_commands
+./build/debug/test_siyi_commands
 ```
 
 Or use the helper script:
@@ -257,9 +257,9 @@ This section is for end-to-end checks against a physical SIYI camera.
 If your machine is directly connected to the camera network:
 
 ```bash
-./out/build/debug/siyi_demo 192.168.144.25 37260 acquire-fw-ver
-./out/build/debug/siyi_demo 192.168.144.25 37260 picture
-./out/build/debug/siyi_demo 192.168.144.25 37260 acquire-gimbal-att --timeout-ms 1500
+./build/debug/siyi_demo 192.168.144.25 37260 acquire-fw-ver
+./build/debug/siyi_demo 192.168.144.25 37260 picture
+./build/debug/siyi_demo 192.168.144.25 37260 acquire-gimbal-att --timeout-ms 1500
 ```
 
 ### Remote routing through another PC

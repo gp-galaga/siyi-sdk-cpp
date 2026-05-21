@@ -48,7 +48,7 @@ namespace SIYI
             ControlFlag::NEED_ACK);
     }
 
-    std::vector<uint8_t> OpticalZoomCameraModel::SetAbsoluteZoom(uint8_t int_zoomValue, uint8_t frac_zoomValue) const
+    std::vector<uint8_t> OpticalZoomCameraModel::SetAbsoluteZoomRaw(uint8_t int_zoomValue, uint8_t frac_zoomValue) const
     {
         return BuildPacket(
             static_cast<uint8_t>(CommandId::ABSOLUTE_ZOOM),
@@ -56,16 +56,27 @@ namespace SIYI
             ControlFlag::NEED_ACK);
     }
 
+    std::vector<uint8_t> OpticalZoomCameraModel::SetAbsoluteZoom(const int zoomValue) const
+    {
+        return SetAbsoluteZoomRaw(static_cast<uint8_t>(zoomValue), 0);
+    }
+
     std::vector<uint8_t> OpticalZoomCameraModel::SetAbsoluteZoom(float zoomValue) const{
-        if (zoomValue < static_cast<float>(zoom_optical_min_))
+        if (zoomValue < static_cast<float>(zoom_min_))
         {
-            zoomValue = static_cast<float>(zoom_optical_min_);
+            zoomValue = static_cast<float>(zoom_min_);
         }
 
-        if (zoomValue > static_cast<float>(zoom_optical_max_))
+        if(zoomValue > static_cast<float>(zoom_optical_max_))
         {
-            zoomValue = static_cast<float>(zoom_optical_max_);
+            logger_->PrintWarning("Absolute zoom value " + std::to_string(zoomValue) + " exceeds optical max of " + std::to_string(zoom_optical_max_) + ". Now using numerical zoom.");
+            if (zoomValue > static_cast<float>(zoom_max_))
+            {
+                zoomValue = static_cast<float>(zoom_max_);
+                logger_->PrintWarning("Absolute zoom value exceeds numerical max. Clamping to " + std::to_string(zoom_max_) + ".");
+            }
         }
+
         
         uint8_t intPart = static_cast<uint8_t>(zoomValue);
         uint8_t fracPart = static_cast<uint8_t>((zoomValue - static_cast<float>(intPart)) * 10.0F + 0.5F);
@@ -74,6 +85,6 @@ namespace SIYI
             fracPart = 9;
         }
 
-        return OpticalZoomCameraModel::SetAbsoluteZoom(intPart, fracPart);
+        return OpticalZoomCameraModel::SetAbsoluteZoomRaw(intPart, fracPart);
     }
 } // namespace SIYI
