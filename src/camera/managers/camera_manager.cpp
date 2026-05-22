@@ -84,7 +84,44 @@ namespace SIYI
                 return std::nullopt;
         }
 
-            return CameraManager(CreateCameraModel(gimbalModel));
+        auto camera = CreateCameraModel(gimbalModel);
+        CameraManager connectedManager(camera);
+
+        const ExecuteResult codecSpecsResult = connectedManager.Execute(
+            ipAddress,
+            port,
+            protocol,
+            camera->AcquireCameraCodecSpecs(StreamType::MAIN_STREAM),
+            opts);
+
+        if (codecSpecsResult.status != ExecuteStatus::OK)
+        {
+            if (error != nullptr)
+            {
+                *error = "codec specs query failed: " + codecSpecsResult.message;
+            }
+            return std::nullopt;
+        }
+
+        if (!codecSpecsResult.telemetry.has_value())
+        {
+            if (error != nullptr)
+            {
+                *error = "codec specs response carried no telemetry";
+            }
+            return std::nullopt;
+        }
+
+        if (std::get_if<TM::CameraCodecSpecs>(&codecSpecsResult.telemetry.value()) == nullptr)
+        {
+            if (error != nullptr)
+            {
+                *error = "codec specs response had unexpected telemetry type";
+            }
+            return std::nullopt;
+        }
+
+        return connectedManager;
     }
 
     std::unique_ptr<ITransport> CameraManager::MakeTransport(const TransportProtocol protocol)

@@ -67,6 +67,7 @@ target_link_libraries(your_target PRIVATE siyi_sdk)
 From the SDK repository root:
 
 ```bash
+python3 scripts/generate_protocol_headers.py 
 cmake --preset release
 cmake --build --preset release
 cmake --install build/release --prefix build/release

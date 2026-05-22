@@ -9,8 +9,11 @@ namespace SIYI
             int16_t rollMin, int16_t rollMax,
             int16_t zoomMin, int16_t zoomMax,
             int16_t zoomOpticalMin, int16_t zoomOpticalMax,
-            std::shared_ptr<TelecommandSession> session)
-            : SharedCameraModel(pitchMin, pitchMax, yawMin, yawMax, rollMin, rollMax, zoomMin, zoomMax, session)
+            std::shared_ptr<TelecommandSession> session,
+            const CameraTechnicalSpecs &technicalSpecs,
+            const OpticalZoomTechnicalSpecs &opticalTechnicalSpecs)
+            : SharedCameraModel(pitchMin, pitchMax, yawMin, yawMax, rollMin, rollMax, zoomMin, zoomMax, session, technicalSpecs),
+              optical_technical_specs_(opticalTechnicalSpecs)
         {
             zoom_optical_min_ = zoomOpticalMin;
             zoom_optical_max_ = zoomOpticalMax;

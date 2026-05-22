@@ -79,7 +79,8 @@ namespace SIYI
     SharedCameraModel::SharedCameraModel(int16_t pitchMin, int16_t pitchMax,
                                          int16_t yawMin, int16_t yawMax,
                                          int16_t rollMin, int16_t rollMax,
-                                         std::shared_ptr<TelecommandSession> session)
+                                 std::shared_ptr<TelecommandSession> session,
+                                 const CameraTechnicalSpecs &technicalSpecs)
         : ICommandCamera(std::move(session)),
                     logger_(helper::CreateConsoleLogger("SharedCameraModel")),
                     cameraName_("SharedCameraModel"),
@@ -88,15 +89,17 @@ namespace SIYI
           yaw_min_(yawMin),
           yaw_max_(yawMax),
           roll_min_(rollMin),
-          roll_max_(rollMax) {
+            roll_max_(rollMax),
+            technical_specs_(technicalSpecs) {
           };
 
     SharedCameraModel::SharedCameraModel(int16_t pitchMin, int16_t pitchMax,
                                          int16_t yawMin, int16_t yawMax,
                                          int16_t rollMin, int16_t rollMax,
                                          int16_t zoomMin, int16_t zoomMax,
-                                         std::shared_ptr<TelecommandSession> session)
-        : SharedCameraModel(pitchMin, pitchMax, yawMin, yawMax, rollMin, rollMax, std::move(session)) {
+                                         std::shared_ptr<TelecommandSession> session,
+                                         const CameraTechnicalSpecs &technicalSpecs)
+        : SharedCameraModel(pitchMin, pitchMax, yawMin, yawMax, rollMin, rollMax, std::move(session), technicalSpecs) {
         zoom_min_ = zoomMin;
         zoom_max_ = zoomMax;
     }
@@ -418,6 +421,41 @@ namespace SIYI
             ControlFlag::NEED_ACK);
     }
 
+    std::vector<uint8_t> SharedCameraModel::AcquireCameraCodecSpecs(const StreamType streamType) const
+    {
+        return BuildPacket(
+            static_cast<uint8_t>(CommandId::ACQUIRE_CODEC_SPECS),
+            {static_cast<uint8_t>(streamType)},
+            ControlFlag::NEED_ACK);
+    }
+
+    std::vector<uint8_t> SharedCameraModel::SendCameraCodecSpecs(
+        const StreamType streamType,
+        const VideoEncType encType,
+        const uint16_t resolutionWidth,
+        const uint16_t resolutionHeight,
+        const uint16_t bitrateKbps) const
+    {
+        pending_codec_stream_type_ = streamType;
+        pending_resolution_width_ = resolutionWidth;
+        pending_resolution_height_ = resolutionHeight;
+
+        std::vector<uint8_t> payload(9);
+        payload[0] = static_cast<uint8_t>(streamType);
+        payload[1] = static_cast<uint8_t>(encType);
+        payload[2] = static_cast<uint8_t>(resolutionWidth & 0xFF);
+        payload[3] = static_cast<uint8_t>((resolutionWidth >> 8) & 0xFF);
+        payload[4] = static_cast<uint8_t>(resolutionHeight & 0xFF);
+        payload[5] = static_cast<uint8_t>((resolutionHeight >> 8) & 0xFF);
+        payload[6] = static_cast<uint8_t>(bitrateKbps & 0xFF);
+        payload[7] = static_cast<uint8_t>((bitrateKbps >> 8) & 0xFF);
+        payload[8] = 0x00; // reserved
+        return BuildPacket(
+            static_cast<uint8_t>(CommandId::SEND_CODEC_SPECS),
+            payload,
+            ControlFlag::NEED_ACK);
+    }
+
     std::vector<uint8_t> SharedCameraModel::SetManualZoom(ManualZoomDirection) const
     {
         throw std::logic_error(cameraName_ + " does not support manual zoom commands");
@@ -649,6 +687,59 @@ namespace SIYI
             info.infoType = packet.data[0];
 
             outMessage = info;
+            return true;
+        }
+
+        if (packet.cmdId == static_cast<uint8_t>(CommandId::ACQUIRE_CODEC_SPECS))
+        {
+            constexpr size_t kExpectedLen = 9;
+            if (packet.data.size() != kExpectedLen)
+            {
+                if (error != nullptr)
+                {
+                    *error = "ACQUIRE_CODEC_SPECS payload must be exactly 9 bytes";
+                }
+                return false;
+            }
+
+            TM::CameraCodecSpecs specs;
+            specs.streamType = packet.data[0];
+            specs.videoEncType = packet.data[1];
+            specs.resolutionWidth = CRC16::ReadU16Le(packet.data, 2);
+            specs.resolutionHeight = CRC16::ReadU16Le(packet.data, 4);
+            specs.videoBitrateKbps = CRC16::ReadU16Le(packet.data, 6);
+            specs.videoFrameRate = packet.data[8];
+
+            current_resolution_width_ = specs.resolutionWidth;
+            current_resolution_height_ = specs.resolutionHeight;
+
+            outMessage = specs;
+            return true;
+        }
+
+        if (packet.cmdId == static_cast<uint8_t>(CommandId::SEND_CODEC_SPECS))
+        {
+            constexpr size_t kExpectedLen = 2;
+            if (packet.data.size() != kExpectedLen)
+            {
+                if (error != nullptr)
+                {
+                    *error = "SEND_CODEC_SPECS ACK payload must be exactly 2 bytes";
+                }
+                return false;
+            }
+
+            TM::SendCodecSpecsAck ack;
+            ack.streamType = packet.data[0];
+            ack.status = packet.data[1];
+
+            if (ack.IsSuccess() && ack.AsStreamType() == pending_codec_stream_type_)
+            {
+                current_resolution_width_ = pending_resolution_width_;
+                current_resolution_height_ = pending_resolution_height_;
+            }
+
+            outMessage = ack;
             return true;
         }
 

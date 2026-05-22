@@ -5,6 +5,20 @@
 
 namespace SIYI
 {
+    struct OpticalZoomTechnicalSpecs
+    {
+        float opticalZoomMaxX {0.0F};
+        float hybridZoomMaxX {0.0F};
+        float focalLengthMinMm {0.0F};
+        float focalLengthMaxMm {0.0F};
+        float apertureMinF {0.0F};
+        float apertureMaxF {0.0F};
+        float fovDiagonalMinZoomDeg {0.0F};
+        float fovHorizontalMinZoomDeg {0.0F};
+        float fovDiagonalMaxOpticalZoomDeg {0.0F};
+        float fovHorizontalMaxOpticalZoomDeg {0.0F};
+    };
+
     class OpticalZoomCameraModel : public SharedCameraModel
     {
     public:
@@ -13,7 +27,9 @@ namespace SIYI
                                int16_t rollMin, int16_t rollMax,
                                int16_t zoomMin, int16_t zoomMax,
                                int16_t zoomOpticalMin, int16_t zoomOpticalMax,
-                               std::shared_ptr<TelecommandSession> session = std::make_shared<TelecommandSession>());
+                               std::shared_ptr<TelecommandSession> session = std::make_shared<TelecommandSession>(),
+                               const CameraTechnicalSpecs& technicalSpecs = CameraTechnicalSpecs(),
+                               const OpticalZoomTechnicalSpecs& opticalTechnicalSpecs = OpticalZoomTechnicalSpecs());
         ~OpticalZoomCameraModel() override = default;
 
         std::vector<uint8_t> SetManualZoom(ManualZoomDirection direction) const override;
@@ -27,6 +43,7 @@ namespace SIYI
         
         int16_t GetZoomOpticalMin() const noexcept { return zoom_optical_min_; }
         int16_t GetZoomOpticalMax() const noexcept { return zoom_optical_max_; }
+        const OpticalZoomTechnicalSpecs& GetOpticalTechnicalSpecs() const noexcept { return optical_technical_specs_; }
         
         protected:
             std::vector<uint8_t> SetAbsoluteZoomRaw(uint8_t int_zoomValue, uint8_t frac_zoomValue) const;
@@ -34,6 +51,7 @@ namespace SIYI
         private:
             int16_t zoom_optical_min_ {0};
             int16_t zoom_optical_max_ {0};
+            OpticalZoomTechnicalSpecs optical_technical_specs_ {};
     };
 } // namespace SIYI
 

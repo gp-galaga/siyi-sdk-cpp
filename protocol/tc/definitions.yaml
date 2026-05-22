@@ -41,7 +41,27 @@ commands:
     value: 0x30
   - name: SOFT_RESTART
     value: 0x80
-  
+  - name: ACQUIRE_CODEC_SPECS
+    value: 0x20
+  - name: SEND_CODEC_SPECS
+    value: 0x21
+
+
+stream_types:
+  - name: RECORDING_STREAM
+    value: 0
+  - name: MAIN_STREAM
+    value: 1
+  - name: SUB_STREAM
+    value: 2
+    note: only available on ZT30 and ZT6
+
+video_enc_types:
+  - name: H264
+    value: 1
+  - name: H265
+    value: 2
+
 
 photo_record_functions:
   - name: TAKE_PICTURE
@@ -98,3 +118,9 @@ command_metadata:
   - cmd: ABSOLUTE_ZOOM
     scope: ZOOM_CAMERA
     supported_models: [ZR10, ZR30, ZT30]
+  - cmd: ACQUIRE_CODEC_SPECS
+    scope: COMMON
+    supported_models: [ZR10, A8_MINI, A2_MINI, ZR30, ZT30, ZT6]
+  - cmd: SEND_CODEC_SPECS
+    scope: COMMON
+    supported_models: [ZR10, A8_MINI, A2_MINI, ZR30, ZT30, ZT6]

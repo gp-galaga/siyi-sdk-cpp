@@ -15,6 +15,29 @@
 
 namespace SIYI
 {
+    struct CameraResolution
+    {
+        uint16_t width {0};
+        uint16_t height {0};
+    };
+
+    struct VideoRecordingResolution
+    {
+        CameraResolution resolution {};
+        uint8_t fps {0};
+    };
+
+    struct CameraTechnicalSpecs
+    {
+        float angularVibrationRangeDeg {0.0F};
+        std::string sensorDescription;
+        float effectiveResolutionMegaPixels {0.0F};
+        std::vector<VideoRecordingResolution> supportedVideoRecordingResolutions;
+        std::vector<CameraResolution> supportedStillPhotoResolutions;
+        std::string imageFormat;
+        std::string videoFileFormat;
+    };
+
     struct SIYIPacket
     {
         static constexpr uint8_t STX_LOW = 0x55;
@@ -45,13 +68,15 @@ namespace SIYI
             explicit SharedCameraModel(int16_t pitchMin, int16_t pitchMax,
                                        int16_t yawMin, int16_t yawMax,
                                        int16_t rollMin, int16_t rollMax,
-                                       std::shared_ptr<TelecommandSession> session = std::make_shared<TelecommandSession>());
+                                       std::shared_ptr<TelecommandSession> session = std::make_shared<TelecommandSession>(),
+                                       const CameraTechnicalSpecs& technicalSpecs = CameraTechnicalSpecs());
 
             explicit SharedCameraModel(int16_t pitchMin, int16_t pitchMax,
                                        int16_t yawMin, int16_t yawMax,
                                        int16_t rollMin, int16_t rollMax,
                                        int16_t zoomMin, int16_t zoomMax,
-                                       std::shared_ptr<TelecommandSession> session = std::make_shared<TelecommandSession>());
+                                       std::shared_ptr<TelecommandSession> session = std::make_shared<TelecommandSession>(),
+                                       const CameraTechnicalSpecs& technicalSpecs = CameraTechnicalSpecs());
 
             std::vector<uint8_t> StartRotation(int8_t yawSpeed, int8_t pitchSpeed) const;
             
@@ -96,6 +121,15 @@ namespace SIYI
 
             std::vector<uint8_t> SoftRestart(bool rebootCamera, bool resetGimbal) const;
 
+            std::vector<uint8_t> AcquireCameraCodecSpecs(StreamType streamType) const;
+
+            std::vector<uint8_t> SendCameraCodecSpecs(
+                StreamType streamType,
+                VideoEncType encType,
+                uint16_t resolutionWidth,
+                uint16_t resolutionHeight,
+                uint16_t bitrateKbps) const;
+
             virtual std::vector<uint8_t> SetManualZoom(ManualZoomDirection direction) const;
 
             virtual std::vector<uint8_t> AutoFocus(uint16_t x_coord, uint16_t y_coord) const;
@@ -118,6 +152,10 @@ namespace SIYI
             int16_t GetRollMax() const noexcept { return roll_max_; }
             int16_t GetZoomMin() const noexcept { return zoom_min_; }
             int16_t GetZoomMax() const noexcept { return zoom_max_; }
+            const CameraTechnicalSpecs& GetTechnicalSpecs() const noexcept { return technical_specs_; }
+            uint16_t GetCurrentResolutionWidth() const noexcept { return current_resolution_width_; }
+            uint16_t GetCurrentResolutionHeight() const noexcept { return current_resolution_height_; }
+            bool HasCurrentResolution() const noexcept { return current_resolution_width_ > 0 && current_resolution_height_ > 0; }
 
             // transport
             bool DecodeFrame(
@@ -157,6 +195,12 @@ namespace SIYI
             int16_t roll_max_ {0};
             int16_t zoom_min_ {1};
             int16_t zoom_max_ {1};
+            CameraTechnicalSpecs technical_specs_ {};
+            mutable uint16_t current_resolution_width_ {0};
+            mutable uint16_t current_resolution_height_ {0};
+            mutable StreamType pending_codec_stream_type_ {StreamType::MAIN_STREAM};
+            mutable uint16_t pending_resolution_width_ {0};
+            mutable uint16_t pending_resolution_height_ {0};
             
             std::shared_ptr<helper::ILogManager> logger_;
             std::string cameraName_ = "undefined";

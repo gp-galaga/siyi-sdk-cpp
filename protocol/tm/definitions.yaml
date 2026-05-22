@@ -152,4 +152,42 @@ typed_messages:
         type: uint8
         enum_type: feedback_info_types
         enum_helper: AsFuncFeedbackInfoType
-      
+
+  - name: CameraCodecSpecs
+    cmd_id: ACQUIRE_CODEC_SPECS
+    payload_len: 9
+    note: ACK returned by camera for ACQUIRE_CODEC_SPECS request
+    fields:
+      - name: streamType
+        type: uint8
+        enum_type: stream_types
+        enum_helper: AsStreamType
+      - name: videoEncType
+        type: uint8
+        enum_type: video_enc_types
+        enum_helper: AsVideoEncType
+      - name: resolutionWidth
+        type: uint16_le
+        unit: pixels
+      - name: resolutionHeight
+        type: uint16_le
+        unit: pixels
+      - name: videoBitrateKbps
+        type: uint16_le
+        unit: Kbps
+      - name: videoFrameRate
+        type: uint8
+        unit: fps
+
+  - name: SendCodecSpecsAck
+    cmd_id: SEND_CODEC_SPECS
+    payload_len: 2
+    note: ACK returned by camera after SEND_CODEC_SPECS command
+    fields:
+      - name: streamType
+        type: uint8
+        enum_type: stream_types
+        enum_helper: AsStreamType
+      - name: status
+        type: uint8
+        note: "1 = Success, 0 = Failure"

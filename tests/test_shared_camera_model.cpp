@@ -365,5 +365,178 @@ namespace SIYI
             CHECK(AckPolicy::IsExpectedAckCmdIdForRequest(feedbackCmdId, requestCmdId));
             CHECK_FALSE(AckPolicy::IsExpectedAckCmdIdForRequest(static_cast<uint8_t>(CommandId::ACQUIRE_FW_VER), requestCmdId));
         }
+
+        TEST_CASE("AcquireCameraCodecSpecs encodes correct command ID and stream type")
+        {
+            TestBaseCamera camera;
+
+            const auto recordingFrame = camera.AcquireCameraCodecSpecs(StreamType::RECORDING_STREAM);
+            const auto mainFrame = camera.AcquireCameraCodecSpecs(StreamType::MAIN_STREAM);
+            const auto subFrame = camera.AcquireCameraCodecSpecs(StreamType::SUB_STREAM);
+
+            SIYIPacket recordingPacket;
+            SIYIPacket mainPacket;
+            SIYIPacket subPacket;
+
+            REQUIRE(camera.DecodeFrame(recordingFrame, recordingPacket));
+            REQUIRE(camera.DecodeFrame(mainFrame, mainPacket));
+            REQUIRE(camera.DecodeFrame(subFrame, subPacket));
+
+            CHECK(recordingPacket.cmdId == static_cast<uint8_t>(CommandId::ACQUIRE_CODEC_SPECS));
+            CHECK(recordingPacket.ctrl == static_cast<uint8_t>(ControlFlag::NEED_ACK));
+            CHECK(recordingPacket.data == std::vector<uint8_t>({0x00}));
+
+            CHECK(mainPacket.cmdId == static_cast<uint8_t>(CommandId::ACQUIRE_CODEC_SPECS));
+            CHECK(mainPacket.data == std::vector<uint8_t>({0x01}));
+
+            CHECK(subPacket.cmdId == static_cast<uint8_t>(CommandId::ACQUIRE_CODEC_SPECS));
+            CHECK(subPacket.data == std::vector<uint8_t>({0x02}));
+        }
+
+        TEST_CASE("SendCameraCodecSpecs encodes 9-byte little-endian payload")
+        {
+            TestBaseCamera camera;
+
+            // 1920 = 0x0780, 1080 = 0x0438, 4000 Kbps = 0x0FA0
+            const auto frame = camera.SendCameraCodecSpecs(
+                StreamType::MAIN_STREAM,
+                VideoEncType::H264,
+                1920,
+                1080,
+                4000);
+
+            SIYIPacket packet;
+            REQUIRE(camera.DecodeFrame(frame, packet));
+
+            CHECK(packet.cmdId == static_cast<uint8_t>(CommandId::SEND_CODEC_SPECS));
+            CHECK(packet.ctrl == static_cast<uint8_t>(ControlFlag::NEED_ACK));
+            REQUIRE(packet.data.size() == 9);
+            CHECK(packet.data[0] == static_cast<uint8_t>(StreamType::MAIN_STREAM));
+            CHECK(packet.data[1] == static_cast<uint8_t>(VideoEncType::H264));
+            CHECK(packet.data[2] == 0x80); // 1920 low byte
+            CHECK(packet.data[3] == 0x07); // 1920 high byte
+            CHECK(packet.data[4] == 0x38); // 1080 low byte
+            CHECK(packet.data[5] == 0x04); // 1080 high byte
+            CHECK(packet.data[6] == 0xA0); // 4000 low byte
+            CHECK(packet.data[7] == 0x0F); // 4000 high byte
+            CHECK(packet.data[8] == 0x00); // reserved
+        }
+
+        TEST_CASE("Decode CameraCodecSpecs ACK from ACQUIRE_CODEC_SPECS response")
+        {
+            TestBaseCamera camera;
+
+            // 1280 = 0x0500, 720 = 0x02D0, 2048 Kbps = 0x0800, 30 fps
+            SIYIPacket packet;
+            packet.ctrl = MakeDeviceAckControlByte();
+            packet.cmdId = static_cast<uint8_t>(CommandId::ACQUIRE_CODEC_SPECS);
+            packet.data = {
+                0x01,       // MAIN_STREAM
+                0x02,       // H265
+                0x00, 0x05, // width  1280 LE
+                0xD0, 0x02, // height  720 LE
+                0x00, 0x08, // bitrate 2048 Kbps LE
+                0x1E        // 30 fps
+            };
+            packet.dataLen = static_cast<uint16_t>(packet.data.size());
+
+            TM::TelemetryMessage message;
+            std::string error;
+            REQUIRE(camera.DecodeTelemetryPacket(packet, message, &error));
+
+            const auto* specs = std::get_if<TM::CameraCodecSpecs>(&message);
+            REQUIRE(specs != nullptr);
+            CHECK(specs->AsStreamType() == StreamType::MAIN_STREAM);
+            CHECK(specs->AsVideoEncType() == VideoEncType::H265);
+            CHECK(specs->resolutionWidth == 1280);
+            CHECK(specs->resolutionHeight == 720);
+            CHECK(specs->videoBitrateKbps == 2048);
+            CHECK(specs->videoFrameRate == 30);
+
+            CHECK(camera.HasCurrentResolution());
+            CHECK(camera.GetCurrentResolutionWidth() == 1280);
+            CHECK(camera.GetCurrentResolutionHeight() == 720);
+        }
+
+        TEST_CASE("Decode SendCodecSpecsAck from SEND_CODEC_SPECS response")
+        {
+            TestBaseCamera camera;
+
+            // Stage desired codec resolution; successful ACK should commit these values.
+            const auto request = camera.SendCameraCodecSpecs(
+                StreamType::RECORDING_STREAM,
+                VideoEncType::H264,
+                1920,
+                1080,
+                3500);
+            SIYIPacket requestPacket;
+            REQUIRE(camera.DecodeFrame(request, requestPacket));
+
+            SIYIPacket successPacket;
+            successPacket.ctrl = MakeDeviceAckControlByte();
+            successPacket.cmdId = static_cast<uint8_t>(CommandId::SEND_CODEC_SPECS);
+            successPacket.data = {0x00, 0x01}; // RECORDING_STREAM, success
+            successPacket.dataLen = static_cast<uint16_t>(successPacket.data.size());
+
+            SIYIPacket failPacket;
+            failPacket.ctrl = MakeDeviceAckControlByte();
+            failPacket.cmdId = static_cast<uint8_t>(CommandId::SEND_CODEC_SPECS);
+            failPacket.data = {0x01, 0x00}; // MAIN_STREAM, failure
+            failPacket.dataLen = static_cast<uint16_t>(failPacket.data.size());
+
+            TM::TelemetryMessage successMessage;
+            TM::TelemetryMessage failMessage;
+            std::string error;
+
+            REQUIRE(camera.DecodeTelemetryPacket(successPacket, successMessage, &error));
+            REQUIRE(camera.DecodeTelemetryPacket(failPacket, failMessage, &error));
+
+            const auto* successAck = std::get_if<TM::SendCodecSpecsAck>(&successMessage);
+            REQUIRE(successAck != nullptr);
+            CHECK(successAck->AsStreamType() == StreamType::RECORDING_STREAM);
+            CHECK(successAck->IsSuccess());
+            CHECK(camera.HasCurrentResolution());
+            CHECK(camera.GetCurrentResolutionWidth() == 1920);
+            CHECK(camera.GetCurrentResolutionHeight() == 1080);
+
+            const auto* failAck = std::get_if<TM::SendCodecSpecsAck>(&failMessage);
+            REQUIRE(failAck != nullptr);
+            CHECK(failAck->AsStreamType() == StreamType::MAIN_STREAM);
+            CHECK_FALSE(failAck->IsSuccess());
+            CHECK(camera.GetCurrentResolutionWidth() == 1920);
+            CHECK(camera.GetCurrentResolutionHeight() == 1080);
+        }
+
+        TEST_CASE("Reject ACQUIRE_CODEC_SPECS ACK with wrong payload length")
+        {
+            TestBaseCamera camera;
+
+            SIYIPacket packet;
+            packet.ctrl = MakeDeviceAckControlByte();
+            packet.cmdId = static_cast<uint8_t>(CommandId::ACQUIRE_CODEC_SPECS);
+            packet.data = {0x01, 0x02, 0x03}; // too short
+            packet.dataLen = static_cast<uint16_t>(packet.data.size());
+
+            TM::TelemetryMessage message;
+            std::string error;
+            CHECK_FALSE(camera.DecodeTelemetryPacket(packet, message, &error));
+            CHECK(error.find("9 bytes") != std::string::npos);
+        }
+
+        TEST_CASE("Reject SEND_CODEC_SPECS ACK with wrong payload length")
+        {
+            TestBaseCamera camera;
+
+            SIYIPacket packet;
+            packet.ctrl = MakeDeviceAckControlByte();
+            packet.cmdId = static_cast<uint8_t>(CommandId::SEND_CODEC_SPECS);
+            packet.data = {0x01}; // too short
+            packet.dataLen = static_cast<uint16_t>(packet.data.size());
+
+            TM::TelemetryMessage message;
+            std::string error;
+            CHECK_FALSE(camera.DecodeTelemetryPacket(packet, message, &error));
+            CHECK(error.find("2 bytes") != std::string::npos);
+        }
     }
 } // namespace SIYI
