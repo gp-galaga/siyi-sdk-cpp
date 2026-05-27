@@ -11,6 +11,11 @@ namespace SIYI
 {
     struct SIYIPacket;
 
+    // Backward-compatible aliases so higher-level APIs can refer to codec enums
+    // from SIYI namespace even though they are generated under SIYI::TM.
+    using StreamType = TM::StreamType;
+    using VideoEncType = TM::VideoEncType;
+
     class ITelemetryDecoder
     {
     public:

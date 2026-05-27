@@ -421,7 +421,7 @@ namespace SIYI
             ControlFlag::NEED_ACK);
     }
 
-    std::vector<uint8_t> SharedCameraModel::AcquireCameraCodecSpecs(const StreamType streamType) const
+    std::vector<uint8_t> SharedCameraModel::AcquireCameraCodecSpecs(const TM::StreamType streamType) const
     {
         return BuildPacket(
             static_cast<uint8_t>(CommandId::ACQUIRE_CODEC_SPECS),
@@ -430,8 +430,8 @@ namespace SIYI
     }
 
     std::vector<uint8_t> SharedCameraModel::SendCameraCodecSpecs(
-        const StreamType streamType,
-        const VideoEncType encType,
+        const TM::StreamType streamType,
+        const TM::VideoEncType encType,
         const uint16_t resolutionWidth,
         const uint16_t resolutionHeight,
         const uint16_t bitrateKbps) const
@@ -733,7 +733,7 @@ namespace SIYI
             ack.streamType = packet.data[0];
             ack.status = packet.data[1];
 
-            if (ack.IsSuccess() && ack.AsStreamType() == pending_codec_stream_type_)
+            if (ack.status == 1 && ack.AsStreamType() == pending_codec_stream_type_)
             {
                 current_resolution_width_ = pending_resolution_width_;
                 current_resolution_height_ = pending_resolution_height_;

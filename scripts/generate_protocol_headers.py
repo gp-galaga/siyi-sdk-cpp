@@ -229,6 +229,13 @@ def _default_enum_helper_name(field_name: str) -> str:
 def _field_helpers_to_lines(message: dict, enum_name_by_key: dict[str, str]) -> list[str]:
     lines: list[str] = []
     for field in message["fields"]:
+        if (
+            field.get("name") == "status"
+            and field.get("type") == "uint8"
+            and "enum_type" not in field
+        ):
+            lines.append("            bool IsSuccess() const { return status == 1; }")
+
         enum_key = field.get("enum_type")
         if enum_key is not None:
             enum_cpp_name = enum_name_by_key.get(str(enum_key))

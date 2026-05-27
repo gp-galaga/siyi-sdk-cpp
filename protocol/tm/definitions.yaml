@@ -41,16 +41,18 @@ feedback_info_types:
     value: 4
 
 stream_types:
-  - name: MAIN_STREAM
+  - name: RECORDING_STREAM
     value: 0
-  - name: SUB_STREAM
+  - name: MAIN_STREAM
     value: 1
+  - name: SUB_STREAM
+    value: 2
 
 video_enc_types:
   - name: H264
-    value: 0
-  - name: H265
     value: 1
+  - name: H265
+    value: 2
 
 typed_messages:
   - name: GimbalAttitude

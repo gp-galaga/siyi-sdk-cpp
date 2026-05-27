@@ -121,11 +121,11 @@ namespace SIYI
 
             std::vector<uint8_t> SoftRestart(bool rebootCamera, bool resetGimbal) const;
 
-            std::vector<uint8_t> AcquireCameraCodecSpecs(StreamType streamType) const;
+            std::vector<uint8_t> AcquireCameraCodecSpecs(TM::StreamType streamType) const;
 
             std::vector<uint8_t> SendCameraCodecSpecs(
-                StreamType streamType,
-                VideoEncType encType,
+                TM::StreamType streamType,
+                TM::VideoEncType encType,
                 uint16_t resolutionWidth,
                 uint16_t resolutionHeight,
                 uint16_t bitrateKbps) const;
@@ -198,7 +198,7 @@ namespace SIYI
             CameraTechnicalSpecs technical_specs_ {};
             mutable uint16_t current_resolution_width_ {0};
             mutable uint16_t current_resolution_height_ {0};
-            mutable StreamType pending_codec_stream_type_ {StreamType::MAIN_STREAM};
+            mutable TM::StreamType pending_codec_stream_type_ {TM::StreamType::MAIN_STREAM};
             mutable uint16_t pending_resolution_width_ {0};
             mutable uint16_t pending_resolution_height_ {0};
             
