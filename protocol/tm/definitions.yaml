@@ -40,6 +40,18 @@ feedback_info_types:
   - name: FAILED_VIDEO_RECORD
     value: 4
 
+stream_types:
+  - name: MAIN_STREAM
+    value: 0
+  - name: SUB_STREAM
+    value: 1
+
+video_enc_types:
+  - name: H264
+    value: 0
+  - name: H265
+    value: 1
+
 typed_messages:
   - name: GimbalAttitude
     cmd_id: ACQUIRE_GIMBAL_ATT
