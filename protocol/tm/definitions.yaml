@@ -68,7 +68,7 @@ typed_messages:
         type: int16_le
         scale: 0.1
         unit: deg
-        helper: PitchDeg
+        helper: PitchDeg 
       - name: roll
         type: int16_le
         scale: 0.1
@@ -205,3 +205,13 @@ typed_messages:
       - name: status
         type: uint8
         note: "1 = Success, 0 = Failure"
+
+  - name: AcquireZoomLevel
+    cmd_id: ACQUIRE_ZOOM_LEVEL
+    payload_len: 2
+    note: ACK returned by camera with zoom value separeted in two integer for integer value and decimal value
+    fields:
+      - name: zoom_int 
+        type: uint8
+      - name: zoom_float
+        type: uint8

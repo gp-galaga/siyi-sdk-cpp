@@ -547,10 +547,7 @@ namespace SIYI
         return true;
     }
 
-    bool SharedCameraModel::DecodeTelemetryPacket(
-        const SIYIPacket &packet,
-        TM::TelemetryMessage &outMessage,
-        std::string *error) const
+    bool SharedCameraModel::DecodeTelemetryPacket(const SIYIPacket &packet, TM::TelemetryMessage &outMessage, std::string *error) const
     {
         if (packet.cmdId == static_cast<uint8_t>(CommandId::ACQUIRE_HW_ID))
         {
@@ -578,10 +575,7 @@ namespace SIYI
 
             outMessage = hardwareId;
             return true;
-        }
-
-        if (packet.cmdId == static_cast<uint8_t>(CommandId::ACQUIRE_GIMBAL_CONFIGURATION))
-        {
+        }else if (packet.cmdId == static_cast<uint8_t>(CommandId::ACQUIRE_GIMBAL_CONFIGURATION)){
             constexpr size_t kExpectedLen = 7;
             if (packet.data.size() != kExpectedLen)
             {
@@ -603,10 +597,7 @@ namespace SIYI
 
             outMessage = config;
             return true;
-        }
-
-        if (packet.cmdId == static_cast<uint8_t>(CommandId::ACQUIRE_GIMBAL_ATT))
-        {
+        } else if (packet.cmdId == static_cast<uint8_t>(CommandId::ACQUIRE_GIMBAL_ATT)){
             constexpr size_t kExpectedLen = 12;
             if (packet.data.size() != kExpectedLen)
             {
@@ -627,10 +618,7 @@ namespace SIYI
 
             outMessage = attitude;
             return true;
-        }
-
-        if (packet.cmdId == static_cast<uint8_t>(CommandId::ACQUIRE_FW_VER))
-        {
+        }else if (packet.cmdId == static_cast<uint8_t>(CommandId::ACQUIRE_FW_VER)){
             constexpr size_t kExpectedLen = 12;
             if (packet.data.size() != kExpectedLen)
             {
@@ -648,10 +636,7 @@ namespace SIYI
 
             outMessage = fwVersion;
             return true;
-        }
-
-        if (packet.cmdId == static_cast<uint8_t>(CommandId::SET_GIMBAL_ANGLE))
-        {
+        }else if (packet.cmdId == static_cast<uint8_t>(CommandId::SET_GIMBAL_ANGLE)){
             constexpr size_t kExpectedLen = 6;
             if (packet.data.size() != kExpectedLen)
             {
@@ -669,10 +654,7 @@ namespace SIYI
 
             outMessage = ack;
             return true;
-        }
-
-        if (packet.cmdId == static_cast<uint8_t>(CommandId::FUNC_FEEDBACK_INFO))
-        {
+        }else if (packet.cmdId == static_cast<uint8_t>(CommandId::FUNC_FEEDBACK_INFO)){
             constexpr size_t kExpectedLen = 1;
             if (packet.data.size() != kExpectedLen)
             {
@@ -688,10 +670,7 @@ namespace SIYI
 
             outMessage = info;
             return true;
-        }
-
-        if (packet.cmdId == static_cast<uint8_t>(CommandId::ACQUIRE_CODEC_SPECS))
-        {
+        }else if (packet.cmdId == static_cast<uint8_t>(CommandId::ACQUIRE_CODEC_SPECS)){
             constexpr size_t kExpectedLen = 9;
             if (packet.data.size() != kExpectedLen)
             {
@@ -715,10 +694,7 @@ namespace SIYI
 
             outMessage = specs;
             return true;
-        }
-
-        if (packet.cmdId == static_cast<uint8_t>(CommandId::SEND_CODEC_SPECS))
-        {
+        }else if (packet.cmdId == static_cast<uint8_t>(CommandId::SEND_CODEC_SPECS)){
             constexpr size_t kExpectedLen = 2;
             if (packet.data.size() != kExpectedLen)
             {
@@ -741,13 +717,19 @@ namespace SIYI
 
             outMessage = ack;
             return true;
-        }
-
-        if (packet.data.size() == 1)
-        {
+        } else if (packet.data.size() == 1) {
             TM::CommandStatusAck statusAck;
             statusAck.cmdId = packet.cmdId;
             statusAck.status = packet.data[0];
+
+            if (std::string(statusAck.CommandName()) == "UNKNOWN_CMD")
+            {
+                if (error != nullptr)
+                {
+                    *error = "Unsupported telemetry packet with cmdId: 0x" + BytesToHex({packet.cmdId});
+                }
+                return false;
+            }
             outMessage = statusAck;
             return true;
         }
@@ -758,9 +740,9 @@ namespace SIYI
         outMessage = std::move(unknown);
         if (error != nullptr)
         {
-            *error = "unsupported telemetry cmd_id for typed decoding";
+            *error = "Unsupported telemetry packet with cmdId: 0x" + BytesToHex({packet.cmdId});
         }
-        return true;
+        return false;
     }
 
     bool SharedCameraModel::DecodeTelemetryFrame(

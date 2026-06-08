@@ -264,6 +264,17 @@ def _field_helpers_to_lines(message: dict, enum_name_by_key: dict[str, str]) -> 
             expression = f"({expression} + {_as_float_literal(field['offset'])})"
 
         lines.append(f"            double {helper_name}() const {{ return {expression}; }}")
+
+    # Backward-compatible special case for SIYI zoom ACK payload where
+    # zoom is represented as integer and first decimal digit.
+    if str(message.get("name", "")) == "AcquireZoomLevel":
+        field_names = {str(field.get("name", "")) for field in message.get("fields", [])}
+        if "zoom_int" in field_names and "zoom_float" in field_names:
+            lines = [line for line in lines if "double GetZoom() const" not in line]
+            lines.append(
+                "            double GetZoom() const { return static_cast<double>(zoom_int) + (static_cast<double>(zoom_float) / 10.0); }"
+            )
+
     return lines
 
 

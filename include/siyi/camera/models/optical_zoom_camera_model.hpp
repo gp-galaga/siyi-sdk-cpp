@@ -40,10 +40,17 @@ namespace SIYI
 
         std::vector<uint8_t> SetAbsoluteZoom(float zoomValue) const override;
         std::vector<uint8_t> SetAbsoluteZoom(int zoomValue) const override;
+
+        std::vector<uint8_t> AcquireZoomLevel() const;
         
         int16_t GetZoomOpticalMin() const noexcept { return zoom_optical_min_; }
         int16_t GetZoomOpticalMax() const noexcept { return zoom_optical_max_; }
         const OpticalZoomTechnicalSpecs& GetOpticalTechnicalSpecs() const noexcept { return optical_technical_specs_; }
+
+        bool DecodeTelemetryPacket(
+            const SIYIPacket& packet,
+            TM::TelemetryMessage& outMessage,
+            std::string* error = nullptr) const override;
         
         protected:
             std::vector<uint8_t> SetAbsoluteZoomRaw(uint8_t int_zoomValue, uint8_t frac_zoomValue) const;

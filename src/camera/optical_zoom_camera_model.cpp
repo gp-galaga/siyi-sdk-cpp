@@ -3,21 +3,21 @@
 namespace SIYI
 {
 
-        OpticalZoomCameraModel::OpticalZoomCameraModel(
-            int16_t pitchMin, int16_t pitchMax,
-            int16_t yawMin, int16_t yawMax,
-            int16_t rollMin, int16_t rollMax,
-            int16_t zoomMin, int16_t zoomMax,
-            int16_t zoomOpticalMin, int16_t zoomOpticalMax,
-            std::shared_ptr<TelecommandSession> session,
-            const CameraTechnicalSpecs &technicalSpecs,
-            const OpticalZoomTechnicalSpecs &opticalTechnicalSpecs)
-            : SharedCameraModel(pitchMin, pitchMax, yawMin, yawMax, rollMin, rollMax, zoomMin, zoomMax, session, technicalSpecs),
-              optical_technical_specs_(opticalTechnicalSpecs)
-        {
-            zoom_optical_min_ = zoomOpticalMin;
-            zoom_optical_max_ = zoomOpticalMax;
-        }
+    OpticalZoomCameraModel::OpticalZoomCameraModel(
+        int16_t pitchMin, int16_t pitchMax,
+        int16_t yawMin, int16_t yawMax,
+        int16_t rollMin, int16_t rollMax,
+        int16_t zoomMin, int16_t zoomMax,
+        int16_t zoomOpticalMin, int16_t zoomOpticalMax,
+        std::shared_ptr<TelecommandSession> session,
+        const CameraTechnicalSpecs &technicalSpecs,
+        const OpticalZoomTechnicalSpecs &opticalTechnicalSpecs)
+        : SharedCameraModel(pitchMin, pitchMax, yawMin, yawMax, rollMin, rollMax, zoomMin, zoomMax, session, technicalSpecs),
+          optical_technical_specs_(opticalTechnicalSpecs)
+    {
+        zoom_optical_min_ = zoomOpticalMin;
+        zoom_optical_max_ = zoomOpticalMax;
+    }
 
     std::vector<uint8_t> OpticalZoomCameraModel::SetManualZoom(const ManualZoomDirection direction) const
     {
@@ -87,7 +87,40 @@ namespace SIYI
         {
             fracPart = 9;
         }
-
+        
         return OpticalZoomCameraModel::SetAbsoluteZoomRaw(intPart, fracPart);
     }
+
+    std::vector<uint8_t> OpticalZoomCameraModel::AcquireZoomLevel() const
+    {
+        return BuildPacket(
+            static_cast<uint8_t>(CommandId::ACQUIRE_ZOOM_LEVEL),
+            {},
+            ControlFlag::NEED_ACK);
+    }
+
+    bool OpticalZoomCameraModel::DecodeTelemetryPacket(const SIYIPacket& packet, TM::TelemetryMessage& outMessage, std::string* error) const{
+        if (packet.cmdId == static_cast<uint8_t>(CommandId::ACQUIRE_ZOOM_LEVEL))
+        {
+            if (packet.data.size() != 2)
+            {
+                if (error != nullptr)
+                {
+                    *error = "Invalid data length for AcquireZoomLevel telemetry packet. Expected 2 bytes, got " + std::to_string(packet.data.size()) + " bytes.";
+                }
+                return false;
+            }
+
+            TM::AcquireZoomLevel zoomLevel;
+            zoomLevel.zoom_int = packet.data[0];
+            zoomLevel.zoom_float = packet.data[1];
+
+            outMessage = zoomLevel;
+            return true;
+        }
+
+        // For other telemetry packets, defer to base class decoder.
+        return SharedCameraModel::DecodeTelemetryPacket(packet, outMessage, error);
+    }
+    
 } // namespace SIYI

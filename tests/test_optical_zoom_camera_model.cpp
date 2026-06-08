@@ -107,5 +107,67 @@ namespace SIYI
             CHECK(clampedLowPacket.data == std::vector<uint8_t>({0x00, 0x00}));
             CHECK(boundaryPacket.data == std::vector<uint8_t>({0x0A, 0x00}));
         }
+
+        TEST_CASE("AcquireZoomLevel encodes expected payload")
+        {
+            OpticalZoomTestBaseCamera camera;
+            const auto frame = camera.AcquireZoomLevel();
+
+            SIYIPacket packet;
+            REQUIRE(camera.DecodeFrame(frame, packet));
+
+            CHECK(packet.ctrl == static_cast<uint8_t>(ControlFlag::NEED_ACK));
+            CHECK(packet.cmdId == static_cast<uint8_t>(CommandId::ACQUIRE_ZOOM_LEVEL));
+            CHECK(packet.data.empty());
+        }
+
+
+        TEST_CASE("DecodeTelemetryPacket correctly decodes ACQUIRE_ZOOM_LEVEL response")
+        {
+            OpticalZoomTestBaseCamera camera;
+
+            SIYIPacket packet;
+            packet.cmdId = static_cast<uint8_t>(CommandId::ACQUIRE_ZOOM_LEVEL);
+            packet.data = {0x05, 0x03}; // zoom level 5.3
+            packet.dataLen = static_cast<uint16_t>(packet.data.size());
+
+            TM::TelemetryMessage message;
+            std::string error;
+            REQUIRE(camera.DecodeTelemetryPacket(packet, message, &error));
+
+            const auto* zoomLevelMsg = std::get_if<TM::AcquireZoomLevel>(&message);
+            REQUIRE(zoomLevelMsg != nullptr);
+            CHECK(zoomLevelMsg->GetZoom() == doctest::Approx(5.3));
+        }
+
+        TEST_CASE("DecodeTelemetryPacket returns false for ACQUIRE_ZOOM_LEVEL with invalid data length")
+        {
+            OpticalZoomTestBaseCamera camera;
+
+            SIYIPacket packet;
+            packet.cmdId = static_cast<uint8_t>(CommandId::ACQUIRE_ZOOM_LEVEL);
+            packet.data = {0x05}; // invalid data length
+            packet.dataLen = static_cast<uint16_t>(packet.data.size());
+
+            TM::TelemetryMessage message;
+            std::string error;
+            CHECK_FALSE(camera.DecodeTelemetryPacket(packet, message, &error));
+            CHECK(error == "Invalid data length for AcquireZoomLevel telemetry packet. Expected 2 bytes, got 1 bytes.");
+        }
+
+        TEST_CASE("DecodeTelemetryPacket returns false for unknown cmdId")
+        {
+            OpticalZoomTestBaseCamera camera;
+
+            SIYIPacket packet;
+            packet.cmdId = 0xFF; // unknown command ID
+            packet.data = {0x00};
+            packet.dataLen = static_cast<uint16_t>(packet.data.size());
+
+            TM::TelemetryMessage message;
+            std::string error;
+            CHECK_FALSE(camera.DecodeTelemetryPacket(packet, message, &error));
+            CHECK(error == "Unsupported telemetry packet with cmdId: 0xFF");
+        }
     }
 } // namespace SIYI
