@@ -32,14 +32,14 @@ namespace SIYI
                                const OpticalZoomTechnicalSpecs& opticalTechnicalSpecs = OpticalZoomTechnicalSpecs());
         ~OpticalZoomCameraModel() override = default;
 
-        std::vector<uint8_t> SetManualZoom(ManualZoomDirection direction) const override;
+        std::vector<uint8_t> SetManualZoom(ManualZoomDirection direction) const;
 
-        std::vector<uint8_t> AutoFocus(uint16_t x_coord, uint16_t y_coord) const override;
+        std::vector<uint8_t> AutoFocus(uint16_t x_coord, uint16_t y_coord) const;
 
-        std::vector<uint8_t> SetManualFocus(ManualFocusDirection direction) const override;
+        std::vector<uint8_t> SetManualFocus(ManualFocusDirection direction) const;
 
-        std::vector<uint8_t> SetAbsoluteZoom(float zoomValue) const override;
-        std::vector<uint8_t> SetAbsoluteZoom(int zoomValue) const override;
+        std::vector<uint8_t> SetAbsoluteZoom(float zoomValue) const;
+        std::vector<uint8_t> SetAbsoluteZoom(int zoomValue) const;
 
         std::vector<uint8_t> AcquireZoomLevel() const;
         
@@ -47,10 +47,10 @@ namespace SIYI
         int16_t GetZoomOpticalMax() const noexcept { return zoom_optical_max_; }
         const OpticalZoomTechnicalSpecs& GetOpticalTechnicalSpecs() const noexcept { return optical_technical_specs_; }
 
-        bool DecodeTelemetryPacket(
+        virtual bool DecodeTelemetryPacket(
             const SIYIPacket& packet,
             TM::TelemetryMessage& outMessage,
-            std::string* error = nullptr) const override;
+            std::string* error = nullptr) const;
         
         protected:
             std::vector<uint8_t> SetAbsoluteZoomRaw(uint8_t int_zoomValue, uint8_t frac_zoomValue) const;

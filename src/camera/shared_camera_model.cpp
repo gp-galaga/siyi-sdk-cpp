@@ -456,31 +456,6 @@ namespace SIYI
             ControlFlag::NEED_ACK);
     }
 
-    std::vector<uint8_t> SharedCameraModel::SetManualZoom(ManualZoomDirection) const
-    {
-        throw std::logic_error(cameraName_ + " does not support manual zoom commands");
-    }
-
-    std::vector<uint8_t> SharedCameraModel::AutoFocus(uint16_t, uint16_t) const
-    {
-        throw std::logic_error(cameraName_ + " does not support auto focus commands");
-    }
-
-    std::vector<uint8_t> SharedCameraModel::SetManualFocus(ManualFocusDirection) const
-    {
-        throw std::logic_error(cameraName_ + " does not support manual focus commands");
-    }
-
-    std::vector<uint8_t> SharedCameraModel::SetAbsoluteZoom(float) const
-    {
-        throw std::logic_error(cameraName_ + " does not support absolute zoom commands");
-    }
-
-    std::vector<uint8_t> SharedCameraModel::SetAbsoluteZoom(int) const
-    {
-        throw std::logic_error(cameraName_ + " does not support absolute zoom commands");
-    }
-
     std::vector<uint8_t> SharedCameraModel::ControlPhotoRecord(
         const PhotoRecordFunction funcType) const
     {

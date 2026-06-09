@@ -1,4 +1,5 @@
 #include "../include/siyi/camera/managers/camera_manager.hpp"
+#include "../include/siyi/camera/models/optical_zoom_camera_model.hpp"
 
 #include <cerrno>
 #include <cmath>
@@ -47,6 +48,7 @@ namespace
             << "  video-cvbs\n"
             << "  video-off\n"
             << "  feedback-info\n"
+            << "  get-zoom-level\n"
             // << "  zr-follow <0|1>\n\n"
             << "Examples:\n"
             << "  " << programName << " 192.168.144.25 37260 picture\n"
@@ -144,6 +146,16 @@ namespace
         }
 
         const std::string& command = args[0];
+        auto* opticalCamera = dynamic_cast<SIYI::OpticalZoomCameraModel*>(&camera);
+        auto requireOptical = [&](const char* cmdName) -> SIYI::OpticalZoomCameraModel* {
+            if (opticalCamera == nullptr)
+            {
+                std::cerr << cmdName << " requires an optical-zoom camera model\n";
+                return nullptr;
+            }
+            return opticalCamera;
+        };
+
         if (command == "stop-rotation")
         {
             return camera.StopRotation();
@@ -166,6 +178,12 @@ namespace
         }
         if (command == "auto-focus")
         {
+            auto* zoomCamera = requireOptical("auto-focus");
+            if (zoomCamera == nullptr)
+            {
+                return std::nullopt;
+            }
+
             uint16_t xCoord = 100;
             uint16_t yCoord = 200;
 
@@ -179,9 +197,15 @@ namespace
                 std::cerr << "invalid auto-focus y_coord: " << args[2] << "\n";
                 return std::nullopt;
             }
-            return camera.AutoFocus(xCoord, yCoord);
+            return zoomCamera->AutoFocus(xCoord, yCoord);
         }
         if(command == "manual-focus"){
+            auto* zoomCamera = requireOptical("manual-focus");
+            if (zoomCamera == nullptr)
+            {
+                return std::nullopt;
+            }
+
             if (args.size() < 2)
             {
                 std::cerr << "manual-focus requires one argument: <direction>\n";
@@ -206,7 +230,7 @@ namespace
                 std::cerr << "invalid manual-focus direction: " << directionStr << " (expected 'stop' or '0', 'long-shot' or '1', or 'close-shot' or '-1')\n";
                 return std::nullopt;
             }
-            return camera.SetManualFocus(direction);
+            return zoomCamera->SetManualFocus(direction);
         }
         if (command == "center")
         {
@@ -258,21 +282,44 @@ namespace
         }
         if (command == "zoom")
         {
+            auto* zoomCamera = requireOptical("zoom");
+            if (zoomCamera == nullptr)
+            {
+                return std::nullopt;
+            }
+
             if (args.size() < 2)
             {
-                std::cerr << "zoom requires one argument: <speed>\n";
+                std::cerr << "zoom requires one argument: <direction> (stop|0, in|1, out|-1)\n";
                 return std::nullopt;
             }
             int8_t zoomSpeed = 0;
             if (!ParseInt8(args[1], zoomSpeed))
             {
-                std::cerr << "invalid zoom speed: " << args[1] << "\n";
+                std::cerr << "invalid zoom direction: " << args[1] << "\n";
                 return std::nullopt;
             }
-            return camera.SetAbsoluteZoom(zoomSpeed);
+
+            SIYI::ManualZoomDirection direction = SIYI::ManualZoomDirection::STOP;
+            if (zoomSpeed > 0)
+            {
+                direction = SIYI::ManualZoomDirection::ZOOM_IN;
+            }
+            else if (zoomSpeed < 0)
+            {
+                direction = SIYI::ManualZoomDirection::ZOOM_OUT;
+            }
+
+            return zoomCamera->SetManualZoom(direction);
         }
         if (command == "absolute-zoom")
         {
+            auto* zoomCamera = requireOptical("absolute-zoom");
+            if (zoomCamera == nullptr)
+            {
+                return std::nullopt;
+            }
+
             if (args.size() < 2)
             {
                 std::cerr << "absolute-zoom requires one argument: <value>\n";
@@ -302,7 +349,7 @@ namespace
                 return std::nullopt;
             }
 
-            return camera.SetAbsoluteZoom(zoomValue);
+            return zoomCamera->SetAbsoluteZoom(zoomValue);
         }
         if (command == "set-gimbal-angle")
         {
@@ -387,6 +434,15 @@ namespace
         if(command == "feedback-info")
         {
             return camera.AcquireFunctionFeedbackInfo();
+        }
+        if(command == "get-zoom-level")
+        {
+            auto* zoomCamera = requireOptical("get-zoom-level");
+            if (zoomCamera == nullptr)
+            {
+                return std::nullopt;
+            }
+            return zoomCamera->AcquireZoomLevel();
         }
 
 

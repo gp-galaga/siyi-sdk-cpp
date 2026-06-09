@@ -130,16 +130,6 @@ namespace SIYI
                 uint16_t resolutionHeight,
                 uint16_t bitrateKbps) const;
 
-            virtual std::vector<uint8_t> SetManualZoom(ManualZoomDirection direction) const;
-
-            virtual std::vector<uint8_t> AutoFocus(uint16_t x_coord, uint16_t y_coord) const;
-
-            virtual std::vector<uint8_t> SetManualFocus(ManualFocusDirection direction) const;
-
-            virtual std::vector<uint8_t> SetAbsoluteZoom(float zoomValue) const;
-
-            virtual std::vector<uint8_t> SetAbsoluteZoom(int zoomValue) const;
-
             std::vector<uint8_t> BuildCustomCommand(uint8_t cmdId, const std::vector<uint8_t>& payload, bool needAck = true) const override;
 
 
@@ -168,10 +158,10 @@ namespace SIYI
                 TM::TelemetryMessage& outMessage,
                 std::string* error = nullptr) const override;
 
-            bool DecodeTelemetryFrame(
+            virtual bool DecodeTelemetryFrame(
                 const std::vector<uint8_t>& frame,
                 TM::TelemetryMessage& outMessage,
-                std::string* error = nullptr) const override;
+                std::string* error = nullptr) const;
 
         protected:
             std::vector<uint8_t> SetGimbalAngleRaw(int16_t yaw, int16_t pitch) const;
