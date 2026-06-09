@@ -538,5 +538,38 @@ namespace SIYI
             CHECK_FALSE(camera.DecodeTelemetryPacket(packet, message, &error));
             CHECK(error.find("2 bytes") != std::string::npos);
         }
+
+        TEST_CASE("AcquireWorkingMode encodes correct command ID and payload")
+        {
+            TestBaseCamera camera;
+
+            const auto frame = camera.AcquireGimbalWorkingMode();
+
+            SIYIPacket packet;
+            REQUIRE(camera.DecodeFrame(frame, packet));
+
+            CHECK(packet.cmdId == static_cast<uint8_t>(CommandId::ACQUIRE_WORKING_MODE));
+            CHECK(packet.ctrl == static_cast<uint8_t>(ControlFlag::NEED_ACK));
+            CHECK(packet.data.empty());
+        }
+
+        TEST_CASE("Decode AcquireWorkingMode ACK with correct payload")
+        {
+            TestBaseCamera camera;
+
+            SIYIPacket packet;
+            packet.ctrl = MakeDeviceAckControlByte();
+            packet.cmdId = static_cast<uint8_t>(CommandId::ACQUIRE_WORKING_MODE);
+            packet.data = {static_cast<uint8_t>(TM::GimbalWorkingModeEnum::FOLLOW_MODE)}; // e.g. "Follow" mode
+            packet.dataLen = static_cast<uint16_t>(packet.data.size());
+
+            TM::TelemetryMessage message;
+            std::string error;
+            REQUIRE(camera.DecodeTelemetryPacket(packet, message, &error));
+
+            const auto* mode = std::get_if<TM::GimbalWorkingMode>(&message);
+            REQUIRE(mode != nullptr);
+            CHECK(mode->AsGimbalWorkingMode() == TM::GimbalWorkingModeEnum::FOLLOW_MODE);
+        }
     }
 } // namespace SIYI
