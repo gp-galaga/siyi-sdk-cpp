@@ -72,8 +72,16 @@ cmake --preset release
 cmake --build --preset release
 cmake --install build/release --prefix build/release
 ```
+#### 2. Build and install this SDK ( with cmake 3.16 )
 
-#### 2. Consume it from another project
+```bash
+python3 scripts/generate_protocol_headers.py 
+mkdir build && cd build
+cmake -DCMAKE_BUILD_TYPE=Release ..
+make -j$(nproc)
+```
+
+#### 3. Consume it from another project
 
 In your consumer `CMakeLists.txt`:
 
