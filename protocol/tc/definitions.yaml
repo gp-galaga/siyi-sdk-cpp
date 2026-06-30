@@ -37,7 +37,6 @@ commands:
     value: 0x0E
   - name: ABSOLUTE_ZOOM
     value: 0x0F
-  # // TBD !!
   - name: ACQUIRE_ZOOM_LEVEL
     value: 0x18
 
