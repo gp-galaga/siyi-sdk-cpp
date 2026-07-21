@@ -374,19 +374,10 @@ namespace SIYI
             ControlFlag::NEED_ACK);
     }
 
-    std::vector<uint8_t> SharedCameraModel::AcquireFunctionFeedbackInfo() const
-    {
-        return BuildPacket(
-            static_cast<uint8_t>(CommandId::FUNC_FEEDBACK_INFO),
-            {},
-            ControlFlag::NEED_ACK);
-    }
-
     std::vector<uint8_t> SharedCameraModel::SetUtcTime(uint64_t unixTimeUs) const
     {
         std::vector<uint8_t> payload(8);
         payload[0] = static_cast<uint8_t>((unixTimeUs >> 0) & 0xFF);
-
         payload[1] = static_cast<uint8_t>((unixTimeUs >> 8) & 0xFF);
         payload[2] = static_cast<uint8_t>((unixTimeUs >> 16) & 0xFF);
         payload[3] = static_cast<uint8_t>((unixTimeUs >> 24) & 0xFF);

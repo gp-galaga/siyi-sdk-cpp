@@ -111,8 +111,6 @@ namespace SIYI
 
             std::vector<uint8_t> AcquireGimbalAttitude() const;
 
-            std::vector<uint8_t> AcquireFunctionFeedbackInfo() const;
-
             std::vector<uint8_t> SetUtcTime(uint64_t unixTimeUs) const;
 
             std::vector<uint8_t> SetUtcTime(std::chrono::microseconds unixTime) const;

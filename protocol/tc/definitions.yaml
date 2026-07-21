@@ -21,14 +21,15 @@ commands:
     value: 0x05
   - name: MANUAL_FOCUS
     value: 0x06
+  # THIS COMMAND ID FUNC_FEEDBACK_INFO IS ONLY USED AFTER PHOTO-RECORD CMD
+  - name: FUNC_FEEDBACK_INFO
+    value: 0x0B
   - name: ROTATION
     value: 0x07
   - name: CENTER
     value: 0x08
   - name: ACQUIRE_GIMBAL_CONFIGURATION
     value: 0x0A
-  - name: FUNC_FEEDBACK_INFO
-    value: 0x0B
   - name: PHOTO_RECORD
     value: 0x0C
   - name: ACQUIRE_GIMBAL_ATT

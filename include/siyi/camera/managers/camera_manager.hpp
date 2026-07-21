@@ -81,6 +81,7 @@ namespace SIYI
         static std::unique_ptr<ITransport> MakeTransport(TransportProtocol protocol);
 
         std::shared_ptr<SharedCameraModel> camera_;
+        std::unique_ptr<ITransport> transport_;
     };
 } // namespace SIYI
 

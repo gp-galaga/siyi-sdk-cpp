@@ -165,25 +165,21 @@ namespace SIYI
             const auto fwFrame = camera.AcquireFirmwareVersion();
             const auto hwFrame = camera.AcquireHardwareId();
             const auto centerFrame = camera.Center();
-            const auto feedbackFrame = camera.AcquireFunctionFeedbackInfo();
             const auto softRestartFrame = camera.SoftRestart(true, false);
 
             SIYIPacket fwPacket;
             SIYIPacket hwPacket;
             SIYIPacket centerPacket;
-            SIYIPacket feedbackPacket;
             SIYIPacket softRestartPacket;
 
             REQUIRE(camera.DecodeFrame(fwFrame, fwPacket));
             REQUIRE(camera.DecodeFrame(hwFrame, hwPacket));
             REQUIRE(camera.DecodeFrame(centerFrame, centerPacket));
-            REQUIRE(camera.DecodeFrame(feedbackFrame, feedbackPacket));
             REQUIRE(camera.DecodeFrame(softRestartFrame, softRestartPacket));
 
             CHECK(fwPacket.cmdId == static_cast<uint8_t>(CommandId::ACQUIRE_FW_VER));
             CHECK(hwPacket.cmdId == static_cast<uint8_t>(CommandId::ACQUIRE_HW_ID));
             CHECK(centerPacket.data == std::vector<uint8_t>({0x01}));
-            CHECK(feedbackPacket.cmdId == static_cast<uint8_t>(CommandId::FUNC_FEEDBACK_INFO));
             CHECK(softRestartPacket.data == std::vector<uint8_t>({1, 0}));
         }
 
@@ -296,6 +292,17 @@ namespace SIYI
             const auto* info = std::get_if<TM::FuncFeedbackInfo>(&message);
             REQUIRE(info != nullptr);
             CHECK(info->AsFuncFeedbackInfoType() == TM::FeedbackInfoType::HDR_ON);
+        }
+
+        TEST_CASE("Generated enum ToString helpers expose symbolic names")
+        {
+            CHECK(std::string(ToString(CommandId::FUNC_FEEDBACK_INFO)) == "FUNC_FEEDBACK_INFO");
+            CHECK(std::string(TM::ToString(TM::FeedbackInfoType::HDR_ON)) == "HDR_ON");
+
+            TM::FuncFeedbackInfo info;
+            info.infoType = static_cast<uint8_t>(TM::FeedbackInfoType::HDR_ON);
+
+            CHECK(std::string(info.InfoTypeToString()) == "HDR_ON");
         }
 
         TEST_CASE("Decode typed firmware-version telemetry")
