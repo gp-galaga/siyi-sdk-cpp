@@ -327,7 +327,7 @@ namespace
             }
 
             float zoomValue = 0.0F;
-            if (!ParseFloat(args[1], zoomValue) || zoomValue < 1.0F || zoomValue > 180.0F)
+            if (!ParseFloat(args[1], zoomValue) || zoomValue < 0.5F || zoomValue > 180.0F)
             {
                 std::cerr << "invalid absolute-zoom value: " << args[1] << " (expected range 1.0 to 180.0)\n";
                 return std::nullopt;
