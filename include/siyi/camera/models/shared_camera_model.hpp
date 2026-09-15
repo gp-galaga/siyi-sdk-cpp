@@ -123,6 +123,8 @@ namespace SIYI
 
             std::vector<uint8_t> AcquireGimbalWorkingMode() const;
 
+            std::vector<uint8_t> FormatSDCard() const;
+
             std::vector<uint8_t> SendCameraCodecSpecs(
                 TM::StreamType streamType,
                 TM::VideoEncType encType,

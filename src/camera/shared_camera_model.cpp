@@ -496,6 +496,14 @@ namespace SIYI
         return ControlPhotoRecord(PhotoRecordFunction::MOTION_FPV_MODE);
     }
 
+    std::vector<uint8_t> SharedCameraModel::FormatSDCard() const
+    {
+        return BuildPacket(
+            static_cast<uint8_t>(CommandId::FORMAT_SD_CARD),
+            {},
+            ControlFlag::NEED_ACK);
+    }
+
     std::vector<uint8_t> SharedCameraModel::BuildCustomCommand(
         const uint8_t cmdId,
         const std::vector<uint8_t> &payload,

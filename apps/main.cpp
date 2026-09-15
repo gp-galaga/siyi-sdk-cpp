@@ -49,6 +49,7 @@ namespace
             << "  video-off\n"
             << "  get-zoom-level\n"
             << "  acquire-codecs-spec\n"
+            << "  format-sd-card\n"
             // << "  zr-follow <0|1>\n\n"
             << "Examples:\n"
             << "  " << programName << " 192.168.144.25 37260 picture\n"
@@ -327,19 +328,11 @@ namespace
             }
 
             float zoomValue = 0.0F;
-            if (!ParseFloat(args[1], zoomValue) || zoomValue < 1.0F || zoomValue > 180.0F)
+            if (!ParseFloat(args[1], zoomValue) || zoomValue < 0.0F || zoomValue > 180.0F)
             {
-                std::cerr << "invalid absolute-zoom value: " << args[1] << " (expected range 1.0 to 180.0)\n";
+                std::cerr << "invalid absolute-zoom value: " << args[1] << " (expected range 0.0 to 180.0)\n";
                 return std::nullopt;
             }
-
-            // const float scaled = zoomValue * 10.0F;
-            // const int scaledInt = static_cast<int>(scaled + 0.5F);
-            // if (std::abs(scaled - static_cast<float>(scaledInt)) > 0.001F)
-            // {
-            //     std::cerr << "invalid absolute-zoom value: " << args[1] << " (expected a single decimal digit)\n";
-            //     return std::nullopt;
-            // }
 
             const int int_part = static_cast<int>(zoomValue);
             const int frac_part = static_cast<int>((zoomValue - static_cast<float>(int_part)) * 10.0F + 0.5F);
@@ -444,7 +437,19 @@ namespace
         {
             return camera.AcquireCameraCodecSpecs(SIYI::TM::StreamType::MAIN_STREAM);
         }
-
+        if(command == "format-sd-card")
+        {
+            // wait for user to confirm the action
+            std::cout << "Are you sure you want to format the SD card? This action cannot be undone. Type 'yes' to confirm: ";
+            std::string confirmation;
+            std::getline(std::cin, confirmation);
+            if (confirmation == "yes"){
+                return camera.FormatSDCard();
+            }else{
+                std::cout << "Format sd card aborted. Please choose another command\n";
+                return std::nullopt;
+            }
+        }
 
         std::cerr << "unknown command: " << command << "\n";
         return std::nullopt;
@@ -480,6 +485,7 @@ int main(int argc, char** argv)
     bool needAck = true;
     int timeoutMs = 1000;
     int repeatCount = 1;
+    bool repeatCountExplicit = false;
     int periodMs = 100;
     uint16_t bindPort = 0;
     std::string transportName = "udp";
@@ -531,6 +537,7 @@ int main(int argc, char** argv)
                 std::cerr << "invalid --repeat value\n";
                 return 1;
             }
+            repeatCountExplicit = true;
             continue;
         }
         if (arg == "--period-ms")
@@ -602,6 +609,16 @@ int main(int argc, char** argv)
         std::cout << "Note: command is configured as no-ACK; skipping ACK wait.\n";
     }
 
+    // format-sd-card is idempotent (re-issuing it just re-formats the same card, unlike
+    // one-shot/toggle commands such as picture/record/hdr where a retry would duplicate
+    // the action) and its ACK has been observed to need a retry on this link's real-world
+    // packet loss. Bump the default attempt count for it alone, unless the caller already
+    // asked for a specific --repeat.
+    if (!repeatCountExplicit && !commandArgs.empty() && commandArgs[0] == "format-sd-card")
+    {
+        repeatCount = 3;
+    }
+
     std::cout << "Sending frame: " << SIYI::BytesToHex(frame.value()) << "\n";
     std::cout << "Sequence: " << (camera.PeekNextSeq() - 1) << "\n";
 
@@ -614,15 +631,15 @@ int main(int argc, char** argv)
 
     const SIYI::ExecuteResult execResult = manager->Execute(ipAddress, port, protocol, frame.value(), execOptions);
 
+    if (!execResult.lastResponseFrame.empty())
+    {
+        std::cout << "Received frame: " << SIYI::BytesToHex(execResult.lastResponseFrame) << "\n";
+    }
+
     if (execResult.status != SIYI::ExecuteStatus::OK)
     {
         std::cerr << "command execution failed: " << execResult.message << "\n";
         return 1;
-    }
-
-    if (!execResult.lastResponseFrame.empty())
-    {
-        std::cout << "Received frame: " << SIYI::BytesToHex(execResult.lastResponseFrame) << "\n";
     }
 
     if (execResult.decodedPacket.has_value())
