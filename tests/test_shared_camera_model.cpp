@@ -373,6 +373,24 @@ namespace SIYI
             CHECK_FALSE(AckPolicy::IsExpectedAckCmdIdForRequest(static_cast<uint8_t>(CommandId::ACQUIRE_FW_VER), requestCmdId));
         }
 
+        TEST_CASE("ACK policy reads ack expectation from the request frame's control byte")
+        {
+            TestBaseCamera camera;
+
+            // ControlPhotoRecord (lock/follow/fpv/HDR/video-output/...) builds NO_ACK frames:
+            // the device is documented and observed to never reply to these on real hardware.
+            const auto lockFrame = camera.ControlPhotoRecord(PhotoRecordFunction::MOTION_LOCK_MODE);
+            CHECK_FALSE(AckPolicy::RequestFrameExpectsAck(lockFrame));
+
+            // Most other commands are built with NEED_ACK and must still be treated as
+            // failures if no matching response arrives.
+            const auto attFrame = camera.AcquireGimbalAttitude();
+            CHECK(AckPolicy::RequestFrameExpectsAck(attFrame));
+
+            // A frame too short to carry a control byte should fail safe (assume ack needed).
+            CHECK(AckPolicy::RequestFrameExpectsAck({0x55, 0x66}));
+        }
+
         TEST_CASE("AcquireCameraCodecSpecs encodes correct command ID and stream type")
         {
             TestBaseCamera camera;
@@ -577,6 +595,20 @@ namespace SIYI
             const auto* mode = std::get_if<TM::GimbalWorkingMode>(&message);
             REQUIRE(mode != nullptr);
             CHECK(mode->AsGimbalWorkingMode() == TM::GimbalWorkingModeEnum::FOLLOW_MODE);
+        }
+
+        TEST_CASE("Get format SD Card command encodes correct command ID and payload")
+        {
+            TestBaseCamera camera;
+
+            const auto frame = camera.FormatSDCard();
+
+            SIYIPacket packet;
+            REQUIRE(camera.DecodeFrame(frame, packet));
+
+            CHECK(packet.cmdId == static_cast<uint8_t>(CommandId::FORMAT_SD_CARD));
+            CHECK(packet.ctrl == static_cast<uint8_t>(ControlFlag::NEED_ACK));
+            CHECK(packet.data.empty());
         }
     }
 } // namespace SIYI

@@ -269,9 +269,9 @@ This section is for end-to-end checks against a physical SIYI camera.
 If your machine is directly connected to the camera network:
 
 ```bash
-./build/debug/siyi_demo 192.168.144.25 37260 acquire-fw-ver
-./build/debug/siyi_demo 192.168.144.25 37260 picture
-./build/debug/siyi_demo 192.168.144.25 37260 acquire-gimbal-att --timeout-ms 1500
+./siyi_demo 192.168.144.25 37260 acquire-fw-ver
+./siyi_demo 192.168.144.25 37260 picture
+./siyi_demo 192.168.144.25 37260 acquire-gimbal-att --timeout-ms 1500
 ```
 
 ### Remote routing through another PC

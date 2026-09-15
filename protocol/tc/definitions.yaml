@@ -49,6 +49,8 @@ commands:
     value: 0x20
   - name: SEND_CODEC_SPECS
     value: 0x21
+  - name: FORMAT_SD_CARD
+    value: 0x48
 
 stream_types:
   - name: RECORDING_STREAM
