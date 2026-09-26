@@ -9,9 +9,7 @@ Highlights:
 - Telecommand helpers for common SIYI command IDs
 - Typed telemetry decode for gimbal attitude/configuration
 - CLI demo app for real camera testing over UDP
-- Unit tests with doctest
-
-__Note__: ABOUT THE CURRENT SIYI User manual: Feedback command is misleading: it is not a command. Only TM and it is triggered after a TC PICTURE-RECORD
+- Unit tests with doctest [TBD]
 
 
 ## Build with VS Code CMake Tools
