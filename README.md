@@ -11,6 +11,8 @@ Highlights:
 - CLI demo app for real camera testing over UDP
 - Unit tests with doctest
 
+__Note__: ABOUT THE CURRENT SIYI User manual: Feedback command is misleading: it is not a command. Only TM and it is triggered after a TC PICTURE-RECORD
+
 
 ## Build with VS Code CMake Tools
 
@@ -72,8 +74,16 @@ cmake --preset release
 cmake --build --preset release
 cmake --install build/release --prefix build/release
 ```
+#### 2. Build and install this SDK ( with cmake 3.16 )
 
-#### 2. Consume it from another project
+```bash
+python3 scripts/generate_protocol_headers.py 
+mkdir build && cd build
+cmake -DCMAKE_BUILD_TYPE=Release ..
+make -j$(nproc)
+```
+
+#### 3. Consume it from another project
 
 In your consumer `CMakeLists.txt`:
 
@@ -259,9 +269,9 @@ This section is for end-to-end checks against a physical SIYI camera.
 If your machine is directly connected to the camera network:
 
 ```bash
-./build/debug/siyi_demo 192.168.144.25 37260 acquire-fw-ver
-./build/debug/siyi_demo 192.168.144.25 37260 picture
-./build/debug/siyi_demo 192.168.144.25 37260 acquire-gimbal-att --timeout-ms 1500
+./siyi_demo 192.168.144.25 37260 acquire-fw-ver
+./siyi_demo 192.168.144.25 37260 picture
+./siyi_demo 192.168.144.25 37260 acquire-gimbal-att --timeout-ms 1500
 ```
 
 ### Remote routing through another PC
@@ -276,7 +286,7 @@ Example addressing:
 On development PC:
 
 ```bash
-sudo ip route add 192.168.144.0/24 via 192.168.1.14
+sudo ip route add 192.168.144.0/24 via 192.168.2.138
 ping 192.168.144.25
 ```
 

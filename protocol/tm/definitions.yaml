@@ -54,6 +54,38 @@ video_enc_types:
   - name: H265
     value: 2
 
+hdr_status:
+  - name: OFF
+    value: 0
+  - name: ON
+    value: 1
+
+mounting_modes:
+  - name: RESERVED
+    value: 0
+  - name: NORMAL
+    value: 1
+  - name: UPSIDE_DOWN
+    value: 2
+
+record_status:
+  - name: OFF
+    value: 0
+  - name: ON
+    value: 1
+  - name: TF_CARD_SLOT_EMPTY
+    value: 2
+  - name: RECORDING_ERROR_TF_CARD_DATA_LOSS
+    value: 3
+
+video_hdmi_or_cvbs:
+  - name: HDMI
+    value: 0
+  - name: CVBS
+    value: 1
+  - name: OFF
+    value: 2
+
 typed_messages:
   - name: GimbalAttitude
     cmd_id: ACQUIRE_GIMBAL_ATT
@@ -98,16 +130,26 @@ typed_messages:
         type: uint8
       - name: hdrStatus
         type: uint8
+        enum_type: hdr_status
+        enum_helper: AsHdrStatus
       - name: reserved1
         type: uint8
       - name: recordStatus
         type: uint8
+        enum_type: record_status
+        enum_helper: AsRecordStatus
       - name: gimbalMotionMode
         type: uint8
+        enum_type: gimbal_working_modes
+        enum_helper: AsGimbalWorkingMode
       - name: gimbalMountingMethod
         type: uint8
+        enum_type: mounting_modes
+        enum_helper: AsMountingMode
       - name: video_hdmi_or_cvbs
         type: uint8
+        enum_type: video_hdmi_or_cvbs
+        enum_helper: AsVideoHdmiOrCvbs
 
   - name: GimbalHardwareId
     cmd_id: ACQUIRE_HW_ID

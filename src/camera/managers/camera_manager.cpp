@@ -151,6 +151,7 @@ namespace SIYI
         }
 
         const uint8_t requestCmdId = requestFrame[7];
+        const bool requestExpectsAck = AckPolicy::RequestFrameExpectsAck(requestFrame);
         std::string error;
 
         std::unique_ptr<ITransport> transport = MakeTransport(protocol);
@@ -239,6 +240,19 @@ namespace SIYI
         {
             result.status = ExecuteStatus::OK;
             result.message = "acknowledged";
+            return result;
+        }
+
+        if (!requestExpectsAck)
+        {
+            // The request frame itself was built as NO_ACK (protocol control byte 0x00).
+            // The device is not obligated to reply, so neither silence nor an unrelated
+            // packet arriving in the listen window is a real failure.
+            result.status = ExecuteStatus::OK;
+            result.message = result.lastResponseFrame.empty()
+                ? "command sent; no acknowledgement expected or received (protocol NO_ACK)"
+                : "command sent; an unrelated/async response arrived and was ignored "
+                  "(protocol NO_ACK, not treated as failure): " + lastFailureMessage;
             return result;
         }
 

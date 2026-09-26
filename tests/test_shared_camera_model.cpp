@@ -165,25 +165,21 @@ namespace SIYI
             const auto fwFrame = camera.AcquireFirmwareVersion();
             const auto hwFrame = camera.AcquireHardwareId();
             const auto centerFrame = camera.Center();
-            const auto feedbackFrame = camera.AcquireFunctionFeedbackInfo();
             const auto softRestartFrame = camera.SoftRestart(true, false);
 
             SIYIPacket fwPacket;
             SIYIPacket hwPacket;
             SIYIPacket centerPacket;
-            SIYIPacket feedbackPacket;
             SIYIPacket softRestartPacket;
 
             REQUIRE(camera.DecodeFrame(fwFrame, fwPacket));
             REQUIRE(camera.DecodeFrame(hwFrame, hwPacket));
             REQUIRE(camera.DecodeFrame(centerFrame, centerPacket));
-            REQUIRE(camera.DecodeFrame(feedbackFrame, feedbackPacket));
             REQUIRE(camera.DecodeFrame(softRestartFrame, softRestartPacket));
 
             CHECK(fwPacket.cmdId == static_cast<uint8_t>(CommandId::ACQUIRE_FW_VER));
             CHECK(hwPacket.cmdId == static_cast<uint8_t>(CommandId::ACQUIRE_HW_ID));
             CHECK(centerPacket.data == std::vector<uint8_t>({0x01}));
-            CHECK(feedbackPacket.cmdId == static_cast<uint8_t>(CommandId::FUNC_FEEDBACK_INFO));
             CHECK(softRestartPacket.data == std::vector<uint8_t>({1, 0}));
         }
 
@@ -298,6 +294,17 @@ namespace SIYI
             CHECK(info->AsFuncFeedbackInfoType() == TM::FeedbackInfoType::HDR_ON);
         }
 
+        TEST_CASE("Generated enum ToString helpers expose symbolic names")
+        {
+            CHECK(std::string(ToString(CommandId::FUNC_FEEDBACK_INFO)) == "FUNC_FEEDBACK_INFO");
+            CHECK(std::string(TM::ToString(TM::FeedbackInfoType::HDR_ON)) == "HDR_ON");
+
+            TM::FuncFeedbackInfo info;
+            info.infoType = static_cast<uint8_t>(TM::FeedbackInfoType::HDR_ON);
+
+            CHECK(std::string(info.InfoTypeToString()) == "HDR_ON");
+        }
+
         TEST_CASE("Decode typed firmware-version telemetry")
         {
             TestBaseCamera camera;
@@ -364,6 +371,24 @@ namespace SIYI
             CHECK(AckPolicy::ExpectedAckCmdIdForRequest(requestCmdId) == feedbackCmdId);
             CHECK(AckPolicy::IsExpectedAckCmdIdForRequest(feedbackCmdId, requestCmdId));
             CHECK_FALSE(AckPolicy::IsExpectedAckCmdIdForRequest(static_cast<uint8_t>(CommandId::ACQUIRE_FW_VER), requestCmdId));
+        }
+
+        TEST_CASE("ACK policy reads ack expectation from the request frame's control byte")
+        {
+            TestBaseCamera camera;
+
+            // ControlPhotoRecord (lock/follow/fpv/HDR/video-output/...) builds NO_ACK frames:
+            // the device is documented and observed to never reply to these on real hardware.
+            const auto lockFrame = camera.ControlPhotoRecord(PhotoRecordFunction::MOTION_LOCK_MODE);
+            CHECK_FALSE(AckPolicy::RequestFrameExpectsAck(lockFrame));
+
+            // Most other commands are built with NEED_ACK and must still be treated as
+            // failures if no matching response arrives.
+            const auto attFrame = camera.AcquireGimbalAttitude();
+            CHECK(AckPolicy::RequestFrameExpectsAck(attFrame));
+
+            // A frame too short to carry a control byte should fail safe (assume ack needed).
+            CHECK(AckPolicy::RequestFrameExpectsAck({0x55, 0x66}));
         }
 
         TEST_CASE("AcquireCameraCodecSpecs encodes correct command ID and stream type")
@@ -570,6 +595,20 @@ namespace SIYI
             const auto* mode = std::get_if<TM::GimbalWorkingMode>(&message);
             REQUIRE(mode != nullptr);
             CHECK(mode->AsGimbalWorkingMode() == TM::GimbalWorkingModeEnum::FOLLOW_MODE);
+        }
+
+        TEST_CASE("Get format SD Card command encodes correct command ID and payload")
+        {
+            TestBaseCamera camera;
+
+            const auto frame = camera.FormatSDCard();
+
+            SIYIPacket packet;
+            REQUIRE(camera.DecodeFrame(frame, packet));
+
+            CHECK(packet.cmdId == static_cast<uint8_t>(CommandId::FORMAT_SD_CARD));
+            CHECK(packet.ctrl == static_cast<uint8_t>(ControlFlag::NEED_ACK));
+            CHECK(packet.data.empty());
         }
     }
 } // namespace SIYI

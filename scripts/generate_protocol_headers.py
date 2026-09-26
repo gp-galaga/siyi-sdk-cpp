@@ -68,7 +68,14 @@ def _default_tm_enum_cpp_name(enum_key: str) -> str:
     if enum_key == "gimbal_models":
         return "GimbalModel"
 
-    base_key = enum_key[:-1] if enum_key.endswith("s") else enum_key
+    parts = [part for part in enum_key.split("_") if part]
+    if parts:
+        last = parts[-1]
+        # Keep words that naturally end with 's' (e.g. status, cvbs)
+        # and singularize obvious plurals (types, modes, models, etc.).
+        if last.endswith("s") and last not in {"status", "cvbs"}:
+            parts[-1] = last[:-1]
+    base_key = "_".join(parts) if parts else enum_key
     return _snake_to_pascal(base_key)
 
 
@@ -114,6 +121,11 @@ def _render_cmd_parameter(tc_data: dict) -> str:
         support_switch.append("                    default: return false;")
         support_switch.append("                }")
 
+    command_scope_rows = [
+        {"name": "COMMON", "value": 0},
+        {"name": "ZOOM_CAMERA", "value": 1},
+    ]
+
     return "\n".join(
         [
             "#ifndef SIYI_CAMERA_CMD_PARAMETER_HPP",
@@ -135,6 +147,8 @@ def _render_cmd_parameter(tc_data: dict) -> str:
             *control,
             "    };",
             "",
+            *_render_enum_to_string_lines("ControlFlag", tc_data["control_flags"]),
+            "",
             "    inline uint8_t MakeHostRequestControlByte() noexcept",
             "    {",
             "        return static_cast<uint8_t>(ControlFlag::NEED_ACK);",
@@ -150,20 +164,28 @@ def _render_cmd_parameter(tc_data: dict) -> str:
             *commands,
             "    };",
             "",
+            *_render_enum_to_string_lines("CommandId", tc_data["commands"], unknown_name="UNKNOWN_CMD"),
+            "",
             "    enum class PhotoRecordFunction : uint8_t",
             "    {",
             *photo,
             "    };",
+            "",
+            *_render_enum_to_string_lines("PhotoRecordFunction", tc_data["photo_record_functions"]),
             "",
             "    enum class ManualZoomDirection : int8_t",
             "    {",
             *zoom_dir,
             "    };",
             "",
+            *_render_enum_to_string_lines("ManualZoomDirection", tc_data["manual_zoom_directions"]),
+            "",
             "    enum class ManualFocusDirection : int8_t",
             "    {",
             *manual_focus_dir,
             "    };",
+            "",
+            *_render_enum_to_string_lines("ManualFocusDirection", tc_data.get("manual_focus_directions", [])),
             "",
             "    enum class CommandScope : uint8_t",
             "    {",
@@ -171,10 +193,14 @@ def _render_cmd_parameter(tc_data: dict) -> str:
             "        ZOOM_CAMERA = 1",
             "    };",
             "",
+            *_render_enum_to_string_lines("CommandScope", command_scope_rows),
+            "",
             "    enum class CameraModel : uint8_t",
             "    {",
             *camera_model_lines,
             "    };",
+            "",
+            *_render_enum_to_string_lines("CameraModel", camera_models),
             "",
             "    inline CommandScope GetCommandScope(CommandId cmd) noexcept",
             "    {",
@@ -226,6 +252,36 @@ def _default_enum_helper_name(field_name: str) -> str:
     return f"As{field_name[0].upper()}{field_name[1:]}"
 
 
+def _default_enum_to_string_helper_name(field_name: str) -> str:
+    return f"{field_name[0].upper()}{field_name[1:]}ToString"
+
+
+def _render_enum_to_string_lines(
+    enum_cpp_name: str,
+    rows: list[dict],
+    *,
+    indent: int = 4,
+    unknown_name: str = "UNKNOWN",
+) -> list[str]:
+    spaces = " " * indent
+    lines = [
+        f"{spaces}inline const char* ToString({enum_cpp_name} value) noexcept",
+        f"{spaces}{{",
+        f"{spaces}    switch (value)",
+        f"{spaces}    {{",
+    ]
+    for row in rows:
+        lines.append(f"{spaces}        case {enum_cpp_name}::{row['name']}: return \"{row['name']}\";")
+    lines.extend(
+        [
+            f"{spaces}        default: return \"{unknown_name}\";",
+            f"{spaces}    }}",
+            f"{spaces}}}",
+        ]
+    )
+    return lines
+
+
 def _field_helpers_to_lines(message: dict, enum_name_by_key: dict[str, str]) -> list[str]:
     lines: list[str] = []
     for field in message["fields"]:
@@ -242,8 +298,12 @@ def _field_helpers_to_lines(message: dict, enum_name_by_key: dict[str, str]) -> 
             if enum_cpp_name is None:
                 raise ValueError(f"Unknown enum_type '{enum_key}' in message '{message['name']}' field '{field['name']}'")
             helper_name = field.get("enum_helper") or field.get("helper") or _default_enum_helper_name(field["name"])
-            lines.append(
-                f"            {enum_cpp_name} {helper_name}() const {{ return static_cast<{enum_cpp_name}>({field['name']}); }}"
+            to_string_helper_name = field.get("enum_to_string_helper") or _default_enum_to_string_helper_name(field["name"])
+            lines.extend(
+                [
+                    f"            {enum_cpp_name} {helper_name}() const {{ return static_cast<{enum_cpp_name}>({field['name']}); }}",
+                    f"            const char* {to_string_helper_name}() const {{ return ToString({helper_name}()); }}",
+                ]
             )
             continue
 
@@ -338,6 +398,8 @@ def _render_tm_parameter(tm_data: dict) -> str:
         enum_blocks.extend(enum_lines)
         enum_blocks.append("        };")
         enum_blocks.append("")
+        enum_blocks.extend(_render_enum_to_string_lines(enum_cpp_name, rows, indent=8))
+        enum_blocks.append("")
 
     alias_blocks: list[str] = []
     for message in typed_messages:
@@ -388,27 +450,7 @@ def _render_tm_parameter(tm_data: dict) -> str:
             "",
             "            const char* CommandName() const",
             "            {",
-            "                switch (static_cast<CommandId>(cmdId))",
-            "                {",
-            "                    case CommandId::TCP_HEARTBEAT: return \"TCP_HEARTBEAT\";",
-            "                    case CommandId::ACQUIRE_FW_VER: return \"ACQUIRE_FW_VER\";",
-            "                    case CommandId::ACQUIRE_HW_ID: return \"ACQUIRE_HW_ID\";",
-            "                    case CommandId::ACQUIRE_WORKING_MODE: return \"ACQUIRE_WORKING_MODE\";",
-            "                    case CommandId::AUTO_FOCUS: return \"AUTO_FOCUS\";",
-            "                    case CommandId::ZOOM: return \"ZOOM\";",
-            "                    case CommandId::MANUAL_FOCUS: return \"MANUAL_FOCUS\";",
-            "                    case CommandId::ROTATION: return \"ROTATION\";",
-            "                    case CommandId::CENTER: return \"CENTER\";",
-            "                    case CommandId::ACQUIRE_GIMBAL_CONFIGURATION: return \"ACQUIRE_GIMBAL_CONFIGURATION\";",
-            "                    case CommandId::FUNC_FEEDBACK_INFO: return \"FUNC_FEEDBACK_INFO\";",
-            "                    case CommandId::PHOTO_RECORD: return \"PHOTO_RECORD\";",
-            "                    case CommandId::ACQUIRE_GIMBAL_ATT: return \"ACQUIRE_GIMBAL_ATT\";",
-            "                    case CommandId::SET_GIMBAL_ANGLE: return \"SET_GIMBAL_ANGLE\";",
-            "                    case CommandId::ABSOLUTE_ZOOM: return \"ABSOLUTE_ZOOM\";",
-            "                    case CommandId::SET_UTC_TIME: return \"SET_UTC_TIME\";",
-            "                    case CommandId::SOFT_RESTART: return \"SOFT_RESTART\";",
-            "                    default: return \"UNKNOWN_CMD\";",
-            "                }",
+            "                return SIYI::ToString(static_cast<CommandId>(cmdId));",
             "            }",
             "        };",
             "",

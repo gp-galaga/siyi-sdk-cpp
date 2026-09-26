@@ -111,8 +111,6 @@ namespace SIYI
 
             std::vector<uint8_t> AcquireGimbalAttitude() const;
 
-            std::vector<uint8_t> AcquireFunctionFeedbackInfo() const;
-
             std::vector<uint8_t> SetUtcTime(uint64_t unixTimeUs) const;
 
             std::vector<uint8_t> SetUtcTime(std::chrono::microseconds unixTime) const;
@@ -124,6 +122,8 @@ namespace SIYI
             std::vector<uint8_t> AcquireCameraCodecSpecs(TM::StreamType streamType) const;
 
             std::vector<uint8_t> AcquireGimbalWorkingMode() const;
+
+            std::vector<uint8_t> FormatSDCard() const;
 
             std::vector<uint8_t> SendCameraCodecSpecs(
                 TM::StreamType streamType,
