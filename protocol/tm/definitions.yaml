@@ -39,6 +39,10 @@ feedback_info_types:
     value: 3
   - name: FAILED_VIDEO_RECORD
     value: 4
+  - name: RECORDING_STARTED
+    value: 5
+  - name: RECORDING_STOPPED
+    value: 6
 
 stream_types:
   - name: RECORDING_STREAM
@@ -55,9 +59,9 @@ video_enc_types:
     value: 2
 
 hdr_status:
-  - name: OFF
+  - name: "OFF"
     value: 0
-  - name: ON
+  - name: "ON"
     value: 1
 
 mounting_modes:
@@ -69,9 +73,9 @@ mounting_modes:
     value: 2
 
 record_status:
-  - name: OFF
+  - name: "OFF"
     value: 0
-  - name: ON
+  - name: "ON"
     value: 1
   - name: TF_CARD_SLOT_EMPTY
     value: 2
@@ -83,8 +87,14 @@ video_hdmi_or_cvbs:
     value: 0
   - name: CVBS
     value: 1
-  - name: OFF
+  - name: "OFF"
     value: 2
+
+ai_mode_status:
+  - name: "OFF"
+    value: 0
+  - name: "ON"
+    value: 1
 
 typed_messages:
   - name: GimbalAttitude
@@ -253,7 +263,42 @@ typed_messages:
     payload_len: 2
     note: ACK returned by camera with zoom value separeted in two integer for integer value and decimal value
     fields:
-      - name: zoom_int 
+      - name: zoom_int
         type: uint8
       - name: zoom_float
         type: uint8
+
+  - name: SupportedZoomRange
+    cmd_id: ACQUIRE_ZOOM_RANGE
+    payload_len: 2
+    note: ACK returned by camera with the maximum zoom multiplier, same int/decimal split as AcquireZoomLevel
+    fields:
+      - name: zoom_max_int
+        type: uint8
+      - name: zoom_max_float
+        type: uint8
+
+  - name: GimbalDataStreamAck
+    cmd_id: REQUEST_GIMBAL_DATA_STREAM
+    payload_len: 1
+    note: ACK echoes the requested data_type (1 = attitude data)
+    fields:
+      - name: dataType
+        type: uint8
+
+  - name: FlightControllerDataStreamAck
+    cmd_id: REQUEST_FC_DATA_STREAM
+    payload_len: 1
+    note: "ACK echoes the requested data_type (1 = attitude, 2 = RC channel data); SIYI documents this command as not in use yet"
+    fields:
+      - name: dataType
+        type: uint8
+
+  - name: AiModeStatus
+    cmd_id: ACQUIRE_AI_MODE_STATUS
+    payload_len: 1
+    fields:
+      - name: sta
+        type: uint8
+        enum_type: ai_mode_status
+        enum_helper: AsAiModeStatus

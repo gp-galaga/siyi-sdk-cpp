@@ -101,6 +101,8 @@ namespace SIYI
 
             std::vector<uint8_t> FPVMotion() const;
 
+            std::vector<uint8_t> PointDown() const;
+
             std::vector<uint8_t> AcquireFirmwareVersion() const;
 
             std::vector<uint8_t> AcquireHardwareId() const;
@@ -123,7 +125,37 @@ namespace SIYI
 
             std::vector<uint8_t> AcquireGimbalWorkingMode() const;
 
+            // Fire-and-forget: the gimbal does not ACK this telemetry push.
+            // Angles/speeds use the NED frame (roll/pitch in [-pi/2, pi/2], yaw in [-pi, pi]);
+            // rotation order is yaw -> pitch -> roll. SIYI recommends 20-50 Hz.
+            std::vector<uint8_t> SendVehicleAttitude(
+                uint32_t timeBootMs,
+                float rollRad, float pitchRad, float yawRad,
+                float rollSpeedRadPerSec, float pitchSpeedRadPerSec, float yawSpeedRadPerSec) const;
+
+            // Fire-and-forget: the gimbal does not ACK this telemetry push.
+            // latDegE7/lonDegE7 are in degrees * 1e7; altCm/altEllipsoidCm in centimeters
+            // (altEllipsoidCm is height above the WGS84/EGM96 ellipsoid, positive up);
+            // vnMmPerS/veMmPerS/vdMmPerS are NED ground-speed components in mm/s.
+            std::vector<uint8_t> SendGpsRawData(
+                uint32_t timeBootMs,
+                int32_t latDegE7, int32_t lonDegE7,
+                int32_t altCm, int32_t altEllipsoidCm,
+                int32_t vnMmPerS, int32_t veMmPerS, int32_t vdMmPerS) const;
+
+            // dataType: 1 = attitude data. dataFrequency: 0 = disabled, 1 = 2 Hz, 2 = 4 Hz,
+            // 3 = 5 Hz, 4 = 10 Hz, 5 = 20 Hz, 6 = 50 Hz, 7 = 100 Hz. Once set, the gimbal
+            // autonomously streams ACQUIRE_GIMBAL_ATT (0x0D) telemetry at that rate.
+            std::vector<uint8_t> RequestGimbalDataStream(uint8_t dataType, uint8_t dataFrequency) const;
+
+            // dataType: 1 = attitude, 2 = RC channel data. Same dataFrequency encoding as
+            // RequestGimbalDataStream(). SIYI documents this command as "Not in Use Yet"
+            // in the ZR30 SDK Guide v0.1.0; implemented here for protocol completeness.
+            std::vector<uint8_t> RequestFlightControllerDataStream(uint8_t dataType, uint8_t dataFrequency) const;
+
             std::vector<uint8_t> FormatSDCard() const;
+
+            std::vector<uint8_t> AcquireAiModeStatus() const;
 
             std::vector<uint8_t> SendCameraCodecSpecs(
                 TM::StreamType streamType,

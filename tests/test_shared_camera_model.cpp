@@ -4,6 +4,8 @@
 #include "../include/siyi/camera/core/ack_policy.hpp"
 #include "../include/siyi/camera/models/shared_camera_model.hpp"
 
+#include <cstring>
+
 namespace SIYI
 {
     class TestBaseCamera final : public SharedCameraModel
@@ -292,6 +294,38 @@ namespace SIYI
             const auto* info = std::get_if<TM::FuncFeedbackInfo>(&message);
             REQUIRE(info != nullptr);
             CHECK(info->AsFuncFeedbackInfoType() == TM::FeedbackInfoType::HDR_ON);
+        }
+
+        TEST_CASE("Decode typed function-feedback telemetry for recording start/stop")
+        {
+            // SIYI ZR30 Optical Pod External SDK Guide v0.1.0: 0x0B info_type
+            // gained values 5 (recording started) and 6 (recording stopped).
+            TestBaseCamera camera;
+
+            SIYIPacket startedPacket;
+            startedPacket.ctrl = MakeDeviceAckControlByte();
+            startedPacket.cmdId = static_cast<uint8_t>(CommandId::FUNC_FEEDBACK_INFO);
+            startedPacket.data = {static_cast<uint8_t>(TM::FeedbackInfoType::RECORDING_STARTED)};
+            startedPacket.dataLen = static_cast<uint16_t>(startedPacket.data.size());
+
+            SIYIPacket stoppedPacket;
+            stoppedPacket.ctrl = MakeDeviceAckControlByte();
+            stoppedPacket.cmdId = static_cast<uint8_t>(CommandId::FUNC_FEEDBACK_INFO);
+            stoppedPacket.data = {static_cast<uint8_t>(TM::FeedbackInfoType::RECORDING_STOPPED)};
+            stoppedPacket.dataLen = static_cast<uint16_t>(stoppedPacket.data.size());
+
+            TM::TelemetryMessage startedMessage;
+            TM::TelemetryMessage stoppedMessage;
+            std::string error;
+            REQUIRE(camera.DecodeTelemetryPacket(startedPacket, startedMessage, &error));
+            REQUIRE(camera.DecodeTelemetryPacket(stoppedPacket, stoppedMessage, &error));
+
+            const auto* started = std::get_if<TM::FuncFeedbackInfo>(&startedMessage);
+            const auto* stopped = std::get_if<TM::FuncFeedbackInfo>(&stoppedMessage);
+            REQUIRE(started != nullptr);
+            REQUIRE(stopped != nullptr);
+            CHECK(started->AsFuncFeedbackInfoType() == TM::FeedbackInfoType::RECORDING_STARTED);
+            CHECK(stopped->AsFuncFeedbackInfoType() == TM::FeedbackInfoType::RECORDING_STOPPED);
         }
 
         TEST_CASE("Generated enum ToString helpers expose symbolic names")
@@ -597,6 +631,172 @@ namespace SIYI
             CHECK(mode->AsGimbalWorkingMode() == TM::GimbalWorkingModeEnum::FOLLOW_MODE);
         }
 
+        TEST_CASE("PointDown encodes PHOTO_RECORD with ONE_KEY_POINT_DOWN payload")
+        {
+            // SIYI ZR30 Optical Pod External SDK Guide v0.1.0: 0x0C func_type
+            // gained value 9 (one-key point down).
+            TestBaseCamera camera;
+
+            auto direct = camera.ControlPhotoRecord(PhotoRecordFunction::ONE_KEY_POINT_DOWN);
+            auto conv = camera.PointDown();
+
+            SIYIPacket directPacket;
+            SIYIPacket convPacket;
+            REQUIRE(camera.DecodeFrame(direct, directPacket));
+            REQUIRE(camera.DecodeFrame(conv, convPacket));
+
+            CHECK(convPacket.ctrl == static_cast<uint8_t>(ControlFlag::NO_ACK));
+            CHECK(convPacket.cmdId == static_cast<uint8_t>(CommandId::PHOTO_RECORD));
+            CHECK(convPacket.data == std::vector<uint8_t>({static_cast<uint8_t>(PhotoRecordFunction::ONE_KEY_POINT_DOWN)}));
+            CHECK(directPacket.data == convPacket.data);
+        }
+
+        TEST_CASE("SendVehicleAttitude encodes 28-byte little-endian payload with NO_ACK")
+        {
+            // SIYI ZR30 Optical Pod External SDK Guide v0.1.0, CMD_ID 0x22.
+            TestBaseCamera camera;
+
+            const auto frame = camera.SendVehicleAttitude(
+                0x01020304U,
+                1.0F, -2.0F, 3.0F,
+                -4.0F, 5.0F, -6.0F);
+
+            SIYIPacket packet;
+            REQUIRE(camera.DecodeFrame(frame, packet));
+
+            CHECK(packet.cmdId == static_cast<uint8_t>(CommandId::SEND_VEHICLE_ATTITUDE));
+            CHECK(packet.ctrl == static_cast<uint8_t>(ControlFlag::NO_ACK));
+            REQUIRE(packet.data.size() == 28);
+
+            CHECK(packet.data[0] == 0x04);
+            CHECK(packet.data[1] == 0x03);
+            CHECK(packet.data[2] == 0x02);
+            CHECK(packet.data[3] == 0x01);
+
+            const auto readFloatLe = [&packet](const size_t index) {
+                uint32_t bits = static_cast<uint32_t>(packet.data[index]) |
+                                 (static_cast<uint32_t>(packet.data[index + 1]) << 8) |
+                                 (static_cast<uint32_t>(packet.data[index + 2]) << 16) |
+                                 (static_cast<uint32_t>(packet.data[index + 3]) << 24);
+                float value;
+                std::memcpy(&value, &bits, sizeof(value));
+                return value;
+            };
+
+            CHECK(readFloatLe(4) == doctest::Approx(1.0F));
+            CHECK(readFloatLe(8) == doctest::Approx(-2.0F));
+            CHECK(readFloatLe(12) == doctest::Approx(3.0F));
+            CHECK(readFloatLe(16) == doctest::Approx(-4.0F));
+            CHECK(readFloatLe(20) == doctest::Approx(5.0F));
+            CHECK(readFloatLe(24) == doctest::Approx(-6.0F));
+        }
+
+        TEST_CASE("SendGpsRawData encodes 32-byte little-endian payload with NO_ACK")
+        {
+            // SIYI ZR30 Optical Pod External SDK Guide v0.1.0, CMD_ID 0x3E.
+            TestBaseCamera camera;
+
+            const auto frame = camera.SendGpsRawData(
+                0x01020304U,
+                -1, 2,
+                300, -400,
+                5, -6, 7);
+
+            SIYIPacket packet;
+            REQUIRE(camera.DecodeFrame(frame, packet));
+
+            CHECK(packet.cmdId == static_cast<uint8_t>(CommandId::SEND_GPS_RAW));
+            CHECK(packet.ctrl == static_cast<uint8_t>(ControlFlag::NO_ACK));
+            REQUIRE(packet.data.size() == 32);
+
+            const auto readI32Le = [&packet](const size_t index) {
+                return static_cast<int32_t>(
+                    static_cast<uint32_t>(packet.data[index]) |
+                    (static_cast<uint32_t>(packet.data[index + 1]) << 8) |
+                    (static_cast<uint32_t>(packet.data[index + 2]) << 16) |
+                    (static_cast<uint32_t>(packet.data[index + 3]) << 24));
+            };
+
+            CHECK(readI32Le(0) == static_cast<int32_t>(0x01020304U));
+            CHECK(readI32Le(4) == -1);
+            CHECK(readI32Le(8) == 2);
+            CHECK(readI32Le(12) == 300);
+            CHECK(readI32Le(16) == -400);
+            CHECK(readI32Le(20) == 5);
+            CHECK(readI32Le(24) == -6);
+            CHECK(readI32Le(28) == 7);
+        }
+
+        TEST_CASE("RequestGimbalDataStream encodes correct command ID and payload")
+        {
+            // SIYI ZR30 Optical Pod External SDK Guide v0.1.0, CMD_ID 0x25:
+            // data_type=1 (attitude), data_freq=4 (10 Hz).
+            TestBaseCamera camera;
+
+            const auto frame = camera.RequestGimbalDataStream(1, 4);
+
+            SIYIPacket packet;
+            REQUIRE(camera.DecodeFrame(frame, packet));
+
+            CHECK(packet.cmdId == static_cast<uint8_t>(CommandId::REQUEST_GIMBAL_DATA_STREAM));
+            CHECK(packet.ctrl == static_cast<uint8_t>(ControlFlag::NEED_ACK));
+            CHECK(packet.data == std::vector<uint8_t>({0x01, 0x04}));
+        }
+
+        TEST_CASE("Decode RequestGimbalDataStream ACK with correct payload")
+        {
+            TestBaseCamera camera;
+
+            SIYIPacket packet;
+            packet.ctrl = MakeDeviceAckControlByte();
+            packet.cmdId = static_cast<uint8_t>(CommandId::REQUEST_GIMBAL_DATA_STREAM);
+            packet.data = {0x01};
+            packet.dataLen = static_cast<uint16_t>(packet.data.size());
+
+            TM::TelemetryMessage message;
+            std::string error;
+            REQUIRE(camera.DecodeTelemetryPacket(packet, message, &error));
+
+            const auto* ack = std::get_if<TM::GimbalDataStreamAck>(&message);
+            REQUIRE(ack != nullptr);
+            CHECK(ack->dataType == 1);
+        }
+
+        TEST_CASE("RequestFlightControllerDataStream encodes correct command ID and payload")
+        {
+            // SIYI ZR30 Optical Pod External SDK Guide v0.1.0, CMD_ID 0x24 ("Not in Use Yet"):
+            // data_type=2 (RC channel data), data_freq=1 (2 Hz).
+            TestBaseCamera camera;
+
+            const auto frame = camera.RequestFlightControllerDataStream(2, 1);
+
+            SIYIPacket packet;
+            REQUIRE(camera.DecodeFrame(frame, packet));
+
+            CHECK(packet.cmdId == static_cast<uint8_t>(CommandId::REQUEST_FC_DATA_STREAM));
+            CHECK(packet.ctrl == static_cast<uint8_t>(ControlFlag::NEED_ACK));
+            CHECK(packet.data == std::vector<uint8_t>({0x02, 0x01}));
+        }
+
+        TEST_CASE("Decode RequestFlightControllerDataStream ACK with correct payload")
+        {
+            TestBaseCamera camera;
+
+            SIYIPacket packet;
+            packet.ctrl = MakeDeviceAckControlByte();
+            packet.cmdId = static_cast<uint8_t>(CommandId::REQUEST_FC_DATA_STREAM);
+            packet.data = {0x02};
+            packet.dataLen = static_cast<uint16_t>(packet.data.size());
+
+            TM::TelemetryMessage message;
+            std::string error;
+            REQUIRE(camera.DecodeTelemetryPacket(packet, message, &error));
+
+            const auto* ack = std::get_if<TM::FlightControllerDataStreamAck>(&message);
+            REQUIRE(ack != nullptr);
+            CHECK(ack->dataType == 2);
+        }
+
         TEST_CASE("Get format SD Card command encodes correct command ID and payload")
         {
             TestBaseCamera camera;
@@ -609,6 +809,39 @@ namespace SIYI
             CHECK(packet.cmdId == static_cast<uint8_t>(CommandId::FORMAT_SD_CARD));
             CHECK(packet.ctrl == static_cast<uint8_t>(ControlFlag::NEED_ACK));
             CHECK(packet.data.empty());
+        }
+
+        TEST_CASE("AcquireAiModeStatus encodes correct command ID and payload")
+        {
+            TestBaseCamera camera;
+
+            const auto frame = camera.AcquireAiModeStatus();
+
+            SIYIPacket packet;
+            REQUIRE(camera.DecodeFrame(frame, packet));
+
+            CHECK(packet.cmdId == static_cast<uint8_t>(CommandId::ACQUIRE_AI_MODE_STATUS));
+            CHECK(packet.ctrl == static_cast<uint8_t>(ControlFlag::NEED_ACK));
+            CHECK(packet.data.empty());
+        }
+
+        TEST_CASE("Decode AcquireAiModeStatus ACK with correct payload")
+        {
+            TestBaseCamera camera;
+
+            SIYIPacket packet;
+            packet.ctrl = MakeDeviceAckControlByte();
+            packet.cmdId = static_cast<uint8_t>(CommandId::ACQUIRE_AI_MODE_STATUS);
+            packet.data = {0x01}; // AI mode on
+            packet.dataLen = static_cast<uint16_t>(packet.data.size());
+
+            TM::TelemetryMessage message;
+            std::string error;
+            REQUIRE(camera.DecodeTelemetryPacket(packet, message, &error));
+
+            const auto* status = std::get_if<TM::AiModeStatus>(&message);
+            REQUIRE(status != nullptr);
+            CHECK(status->AsAiModeStatus() == TM::AiModeStatusEnum::ON);
         }
     }
 } // namespace SIYI

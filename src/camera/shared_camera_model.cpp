@@ -5,6 +5,7 @@
 #include <array>
 #include <cctype>
 #include <cstdlib>
+#include <cstring>
 #include <iomanip>
 #include <stdexcept>
 #include <sstream>
@@ -73,6 +74,26 @@ namespace SIYI
                    (static_cast<uint32_t>(data[index + 1]) << 8) |
                    (static_cast<uint32_t>(data[index + 2]) << 16) |
                    (static_cast<uint32_t>(data[index + 3]) << 24);
+        }
+
+        void PushU32Le(std::vector<uint8_t> &data, uint32_t value)
+        {
+            data.push_back(static_cast<uint8_t>(value & 0xFF));
+            data.push_back(static_cast<uint8_t>((value >> 8) & 0xFF));
+            data.push_back(static_cast<uint8_t>((value >> 16) & 0xFF));
+            data.push_back(static_cast<uint8_t>((value >> 24) & 0xFF));
+        }
+
+        void PushFloatLe(std::vector<uint8_t> &data, float value)
+        {
+            uint32_t bits;
+            std::memcpy(&bits, &value, sizeof(bits));
+            PushU32Le(data, bits);
+        }
+
+        void PushI32Le(std::vector<uint8_t> &data, int32_t value)
+        {
+            PushU32Le(data, static_cast<uint32_t>(value));
         }
     } // namespace CRC16
 
@@ -496,10 +517,83 @@ namespace SIYI
         return ControlPhotoRecord(PhotoRecordFunction::MOTION_FPV_MODE);
     }
 
+    std::vector<uint8_t> SharedCameraModel::PointDown() const
+    {
+        return ControlPhotoRecord(PhotoRecordFunction::ONE_KEY_POINT_DOWN);
+    }
+
+    std::vector<uint8_t> SharedCameraModel::SendVehicleAttitude(
+        const uint32_t timeBootMs,
+        const float rollRad, const float pitchRad, const float yawRad,
+        const float rollSpeedRadPerSec, const float pitchSpeedRadPerSec, const float yawSpeedRadPerSec) const
+    {
+        std::vector<uint8_t> payload;
+        payload.reserve(28);
+        CRC16::PushU32Le(payload, timeBootMs);
+        CRC16::PushFloatLe(payload, rollRad);
+        CRC16::PushFloatLe(payload, pitchRad);
+        CRC16::PushFloatLe(payload, yawRad);
+        CRC16::PushFloatLe(payload, rollSpeedRadPerSec);
+        CRC16::PushFloatLe(payload, pitchSpeedRadPerSec);
+        CRC16::PushFloatLe(payload, yawSpeedRadPerSec);
+
+        return BuildPacket(
+            static_cast<uint8_t>(CommandId::SEND_VEHICLE_ATTITUDE),
+            payload,
+            ControlFlag::NO_ACK);
+    }
+
+    std::vector<uint8_t> SharedCameraModel::SendGpsRawData(
+        const uint32_t timeBootMs,
+        const int32_t latDegE7, const int32_t lonDegE7,
+        const int32_t altCm, const int32_t altEllipsoidCm,
+        const int32_t vnMmPerS, const int32_t veMmPerS, const int32_t vdMmPerS) const
+    {
+        std::vector<uint8_t> payload;
+        payload.reserve(32);
+        CRC16::PushU32Le(payload, timeBootMs);
+        CRC16::PushI32Le(payload, latDegE7);
+        CRC16::PushI32Le(payload, lonDegE7);
+        CRC16::PushI32Le(payload, altCm);
+        CRC16::PushI32Le(payload, altEllipsoidCm);
+        CRC16::PushI32Le(payload, vnMmPerS);
+        CRC16::PushI32Le(payload, veMmPerS);
+        CRC16::PushI32Le(payload, vdMmPerS);
+
+        return BuildPacket(
+            static_cast<uint8_t>(CommandId::SEND_GPS_RAW),
+            payload,
+            ControlFlag::NO_ACK);
+    }
+
+    std::vector<uint8_t> SharedCameraModel::RequestGimbalDataStream(const uint8_t dataType, const uint8_t dataFrequency) const
+    {
+        return BuildPacket(
+            static_cast<uint8_t>(CommandId::REQUEST_GIMBAL_DATA_STREAM),
+            {dataType, dataFrequency},
+            ControlFlag::NEED_ACK);
+    }
+
+    std::vector<uint8_t> SharedCameraModel::RequestFlightControllerDataStream(const uint8_t dataType, const uint8_t dataFrequency) const
+    {
+        return BuildPacket(
+            static_cast<uint8_t>(CommandId::REQUEST_FC_DATA_STREAM),
+            {dataType, dataFrequency},
+            ControlFlag::NEED_ACK);
+    }
+
     std::vector<uint8_t> SharedCameraModel::FormatSDCard() const
     {
         return BuildPacket(
             static_cast<uint8_t>(CommandId::FORMAT_SD_CARD),
+            {},
+            ControlFlag::NEED_ACK);
+    }
+
+    std::vector<uint8_t> SharedCameraModel::AcquireAiModeStatus() const
+    {
+        return BuildPacket(
+            static_cast<uint8_t>(CommandId::ACQUIRE_AI_MODE_STATUS),
             {},
             ControlFlag::NEED_ACK);
     }
@@ -714,6 +808,54 @@ namespace SIYI
             mode.gimbalWorkingMode = packet.data[0];
 
             outMessage = mode;
+            return true;
+        } else if (packet.cmdId == static_cast<uint8_t>(CommandId::REQUEST_GIMBAL_DATA_STREAM)){
+            constexpr size_t kExpectedLen = 1;
+            if (packet.data.size() != kExpectedLen)
+            {
+                if (error != nullptr)
+                {
+                    *error = "REQUEST_GIMBAL_DATA_STREAM payload must be exactly 1 byte";
+                }
+                return false;
+            }
+
+            TM::GimbalDataStreamAck ack;
+            ack.dataType = packet.data[0];
+
+            outMessage = ack;
+            return true;
+        } else if (packet.cmdId == static_cast<uint8_t>(CommandId::REQUEST_FC_DATA_STREAM)){
+            constexpr size_t kExpectedLen = 1;
+            if (packet.data.size() != kExpectedLen)
+            {
+                if (error != nullptr)
+                {
+                    *error = "REQUEST_FC_DATA_STREAM payload must be exactly 1 byte";
+                }
+                return false;
+            }
+
+            TM::FlightControllerDataStreamAck ack;
+            ack.dataType = packet.data[0];
+
+            outMessage = ack;
+            return true;
+        } else if (packet.cmdId == static_cast<uint8_t>(CommandId::ACQUIRE_AI_MODE_STATUS)){
+            constexpr size_t kExpectedLen = 1;
+            if (packet.data.size() != kExpectedLen)
+            {
+                if (error != nullptr)
+                {
+                    *error = "ACQUIRE_AI_MODE_STATUS payload must be exactly 1 byte";
+                }
+                return false;
+            }
+
+            TM::AiModeStatus status;
+            status.sta = packet.data[0];
+
+            outMessage = status;
             return true;
         } else if (packet.data.size() == 1) {
             TM::CommandStatusAck statusAck;
