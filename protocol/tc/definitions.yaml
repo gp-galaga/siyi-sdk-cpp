@@ -87,6 +87,8 @@ photo_record_functions:
     value: 7
   - name: VIDEO_OUTPUT_OFF
     value: 8
+  - name: ONE_KEY_POINT_DOWN
+    value: 9
 
 manual_zoom_directions:
   - name: STOP

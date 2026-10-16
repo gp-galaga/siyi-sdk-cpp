@@ -496,6 +496,11 @@ namespace SIYI
         return ControlPhotoRecord(PhotoRecordFunction::MOTION_FPV_MODE);
     }
 
+    std::vector<uint8_t> SharedCameraModel::PointDown() const
+    {
+        return ControlPhotoRecord(PhotoRecordFunction::ONE_KEY_POINT_DOWN);
+    }
+
     std::vector<uint8_t> SharedCameraModel::FormatSDCard() const
     {
         return BuildPacket(

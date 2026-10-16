@@ -629,6 +629,26 @@ namespace SIYI
             CHECK(mode->AsGimbalWorkingMode() == TM::GimbalWorkingModeEnum::FOLLOW_MODE);
         }
 
+        TEST_CASE("PointDown encodes PHOTO_RECORD with ONE_KEY_POINT_DOWN payload")
+        {
+            // SIYI ZR30 Optical Pod External SDK Guide v0.1.0: 0x0C func_type
+            // gained value 9 (one-key point down).
+            TestBaseCamera camera;
+
+            auto direct = camera.ControlPhotoRecord(PhotoRecordFunction::ONE_KEY_POINT_DOWN);
+            auto conv = camera.PointDown();
+
+            SIYIPacket directPacket;
+            SIYIPacket convPacket;
+            REQUIRE(camera.DecodeFrame(direct, directPacket));
+            REQUIRE(camera.DecodeFrame(conv, convPacket));
+
+            CHECK(convPacket.ctrl == static_cast<uint8_t>(ControlFlag::NO_ACK));
+            CHECK(convPacket.cmdId == static_cast<uint8_t>(CommandId::PHOTO_RECORD));
+            CHECK(convPacket.data == std::vector<uint8_t>({static_cast<uint8_t>(PhotoRecordFunction::ONE_KEY_POINT_DOWN)}));
+            CHECK(directPacket.data == convPacket.data);
+        }
+
         TEST_CASE("Get format SD Card command encodes correct command ID and payload")
         {
             TestBaseCamera camera;

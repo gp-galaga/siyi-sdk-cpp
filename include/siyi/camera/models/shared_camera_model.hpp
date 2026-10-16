@@ -101,6 +101,8 @@ namespace SIYI
 
             std::vector<uint8_t> FPVMotion() const;
 
+            std::vector<uint8_t> PointDown() const;
+
             std::vector<uint8_t> AcquireFirmwareVersion() const;
 
             std::vector<uint8_t> AcquireHardwareId() const;
