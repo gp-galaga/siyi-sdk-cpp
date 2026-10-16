@@ -133,6 +133,16 @@ namespace SIYI
                 float rollRad, float pitchRad, float yawRad,
                 float rollSpeedRadPerSec, float pitchSpeedRadPerSec, float yawSpeedRadPerSec) const;
 
+            // Fire-and-forget: the gimbal does not ACK this telemetry push.
+            // latDegE7/lonDegE7 are in degrees * 1e7; altCm/altEllipsoidCm in centimeters
+            // (altEllipsoidCm is height above the WGS84/EGM96 ellipsoid, positive up);
+            // vnMmPerS/veMmPerS/vdMmPerS are NED ground-speed components in mm/s.
+            std::vector<uint8_t> SendGpsRawData(
+                uint32_t timeBootMs,
+                int32_t latDegE7, int32_t lonDegE7,
+                int32_t altCm, int32_t altEllipsoidCm,
+                int32_t vnMmPerS, int32_t veMmPerS, int32_t vdMmPerS) const;
+
             std::vector<uint8_t> FormatSDCard() const;
 
             std::vector<uint8_t> SendCameraCodecSpecs(

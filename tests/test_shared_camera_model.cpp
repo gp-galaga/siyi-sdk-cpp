@@ -691,6 +691,42 @@ namespace SIYI
             CHECK(readFloatLe(24) == doctest::Approx(-6.0F));
         }
 
+        TEST_CASE("SendGpsRawData encodes 32-byte little-endian payload with NO_ACK")
+        {
+            // SIYI ZR30 Optical Pod External SDK Guide v0.1.0, CMD_ID 0x3E.
+            TestBaseCamera camera;
+
+            const auto frame = camera.SendGpsRawData(
+                0x01020304U,
+                -1, 2,
+                300, -400,
+                5, -6, 7);
+
+            SIYIPacket packet;
+            REQUIRE(camera.DecodeFrame(frame, packet));
+
+            CHECK(packet.cmdId == static_cast<uint8_t>(CommandId::SEND_GPS_RAW));
+            CHECK(packet.ctrl == static_cast<uint8_t>(ControlFlag::NO_ACK));
+            REQUIRE(packet.data.size() == 32);
+
+            const auto readI32Le = [&packet](const size_t index) {
+                return static_cast<int32_t>(
+                    static_cast<uint32_t>(packet.data[index]) |
+                    (static_cast<uint32_t>(packet.data[index + 1]) << 8) |
+                    (static_cast<uint32_t>(packet.data[index + 2]) << 16) |
+                    (static_cast<uint32_t>(packet.data[index + 3]) << 24));
+            };
+
+            CHECK(readI32Le(0) == static_cast<int32_t>(0x01020304U));
+            CHECK(readI32Le(4) == -1);
+            CHECK(readI32Le(8) == 2);
+            CHECK(readI32Le(12) == 300);
+            CHECK(readI32Le(16) == -400);
+            CHECK(readI32Le(20) == 5);
+            CHECK(readI32Le(24) == -6);
+            CHECK(readI32Le(28) == 7);
+        }
+
         TEST_CASE("Get format SD Card command encodes correct command ID and payload")
         {
             TestBaseCamera camera;

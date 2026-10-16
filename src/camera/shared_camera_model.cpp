@@ -90,6 +90,11 @@ namespace SIYI
             std::memcpy(&bits, &value, sizeof(bits));
             PushU32Le(data, bits);
         }
+
+        void PushI32Le(std::vector<uint8_t> &data, int32_t value)
+        {
+            PushU32Le(data, static_cast<uint32_t>(value));
+        }
     } // namespace CRC16
 
     SharedCameraModel::SharedCameraModel(int16_t pitchMin, int16_t pitchMax,
@@ -534,6 +539,29 @@ namespace SIYI
 
         return BuildPacket(
             static_cast<uint8_t>(CommandId::SEND_VEHICLE_ATTITUDE),
+            payload,
+            ControlFlag::NO_ACK);
+    }
+
+    std::vector<uint8_t> SharedCameraModel::SendGpsRawData(
+        const uint32_t timeBootMs,
+        const int32_t latDegE7, const int32_t lonDegE7,
+        const int32_t altCm, const int32_t altEllipsoidCm,
+        const int32_t vnMmPerS, const int32_t veMmPerS, const int32_t vdMmPerS) const
+    {
+        std::vector<uint8_t> payload;
+        payload.reserve(32);
+        CRC16::PushU32Le(payload, timeBootMs);
+        CRC16::PushI32Le(payload, latDegE7);
+        CRC16::PushI32Le(payload, lonDegE7);
+        CRC16::PushI32Le(payload, altCm);
+        CRC16::PushI32Le(payload, altEllipsoidCm);
+        CRC16::PushI32Le(payload, vnMmPerS);
+        CRC16::PushI32Le(payload, veMmPerS);
+        CRC16::PushI32Le(payload, vdMmPerS);
+
+        return BuildPacket(
+            static_cast<uint8_t>(CommandId::SEND_GPS_RAW),
             payload,
             ControlFlag::NO_ACK);
     }
