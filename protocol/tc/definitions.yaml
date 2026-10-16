@@ -53,6 +53,9 @@ commands:
     value: 0x21
   - name: SEND_VEHICLE_ATTITUDE
     value: 0x22
+  # Documented by SIYI as "Not in Use Yet" as of SDK Guide v0.1.0.
+  - name: REQUEST_FC_DATA_STREAM
+    value: 0x24
   - name: REQUEST_GIMBAL_DATA_STREAM
     value: 0x25
   - name: SEND_GPS_RAW

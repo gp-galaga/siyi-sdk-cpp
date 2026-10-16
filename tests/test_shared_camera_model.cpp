@@ -762,6 +762,41 @@ namespace SIYI
             CHECK(ack->dataType == 1);
         }
 
+        TEST_CASE("RequestFlightControllerDataStream encodes correct command ID and payload")
+        {
+            // SIYI ZR30 Optical Pod External SDK Guide v0.1.0, CMD_ID 0x24 ("Not in Use Yet"):
+            // data_type=2 (RC channel data), data_freq=1 (2 Hz).
+            TestBaseCamera camera;
+
+            const auto frame = camera.RequestFlightControllerDataStream(2, 1);
+
+            SIYIPacket packet;
+            REQUIRE(camera.DecodeFrame(frame, packet));
+
+            CHECK(packet.cmdId == static_cast<uint8_t>(CommandId::REQUEST_FC_DATA_STREAM));
+            CHECK(packet.ctrl == static_cast<uint8_t>(ControlFlag::NEED_ACK));
+            CHECK(packet.data == std::vector<uint8_t>({0x02, 0x01}));
+        }
+
+        TEST_CASE("Decode RequestFlightControllerDataStream ACK with correct payload")
+        {
+            TestBaseCamera camera;
+
+            SIYIPacket packet;
+            packet.ctrl = MakeDeviceAckControlByte();
+            packet.cmdId = static_cast<uint8_t>(CommandId::REQUEST_FC_DATA_STREAM);
+            packet.data = {0x02};
+            packet.dataLen = static_cast<uint16_t>(packet.data.size());
+
+            TM::TelemetryMessage message;
+            std::string error;
+            REQUIRE(camera.DecodeTelemetryPacket(packet, message, &error));
+
+            const auto* ack = std::get_if<TM::FlightControllerDataStreamAck>(&message);
+            REQUIRE(ack != nullptr);
+            CHECK(ack->dataType == 2);
+        }
+
         TEST_CASE("Get format SD Card command encodes correct command ID and payload")
         {
             TestBaseCamera camera;

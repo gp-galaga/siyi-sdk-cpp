@@ -148,6 +148,11 @@ namespace SIYI
             // autonomously streams ACQUIRE_GIMBAL_ATT (0x0D) telemetry at that rate.
             std::vector<uint8_t> RequestGimbalDataStream(uint8_t dataType, uint8_t dataFrequency) const;
 
+            // dataType: 1 = attitude, 2 = RC channel data. Same dataFrequency encoding as
+            // RequestGimbalDataStream(). SIYI documents this command as "Not in Use Yet"
+            // in the ZR30 SDK Guide v0.1.0; implemented here for protocol completeness.
+            std::vector<uint8_t> RequestFlightControllerDataStream(uint8_t dataType, uint8_t dataFrequency) const;
+
             std::vector<uint8_t> FormatSDCard() const;
 
             std::vector<uint8_t> SendCameraCodecSpecs(

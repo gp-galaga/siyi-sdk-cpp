@@ -574,6 +574,14 @@ namespace SIYI
             ControlFlag::NEED_ACK);
     }
 
+    std::vector<uint8_t> SharedCameraModel::RequestFlightControllerDataStream(const uint8_t dataType, const uint8_t dataFrequency) const
+    {
+        return BuildPacket(
+            static_cast<uint8_t>(CommandId::REQUEST_FC_DATA_STREAM),
+            {dataType, dataFrequency},
+            ControlFlag::NEED_ACK);
+    }
+
     std::vector<uint8_t> SharedCameraModel::FormatSDCard() const
     {
         return BuildPacket(
@@ -805,6 +813,22 @@ namespace SIYI
             }
 
             TM::GimbalDataStreamAck ack;
+            ack.dataType = packet.data[0];
+
+            outMessage = ack;
+            return true;
+        } else if (packet.cmdId == static_cast<uint8_t>(CommandId::REQUEST_FC_DATA_STREAM)){
+            constexpr size_t kExpectedLen = 1;
+            if (packet.data.size() != kExpectedLen)
+            {
+                if (error != nullptr)
+                {
+                    *error = "REQUEST_FC_DATA_STREAM payload must be exactly 1 byte";
+                }
+                return false;
+            }
+
+            TM::FlightControllerDataStreamAck ack;
             ack.dataType = packet.data[0];
 
             outMessage = ack;

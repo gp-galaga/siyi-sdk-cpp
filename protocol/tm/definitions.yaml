@@ -279,3 +279,11 @@ typed_messages:
     fields:
       - name: dataType
         type: uint8
+
+  - name: FlightControllerDataStreamAck
+    cmd_id: REQUEST_FC_DATA_STREAM
+    payload_len: 1
+    note: "ACK echoes the requested data_type (1 = attitude, 2 = RC channel data); SIYI documents this command as not in use yet"
+    fields:
+      - name: dataType
+        type: uint8
