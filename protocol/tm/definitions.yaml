@@ -55,9 +55,9 @@ video_enc_types:
     value: 2
 
 hdr_status:
-  - name: OFF
+  - name: "OFF"
     value: 0
-  - name: ON
+  - name: "ON"
     value: 1
 
 mounting_modes:
@@ -69,9 +69,9 @@ mounting_modes:
     value: 2
 
 record_status:
-  - name: OFF
+  - name: "OFF"
     value: 0
-  - name: ON
+  - name: "ON"
     value: 1
   - name: TF_CARD_SLOT_EMPTY
     value: 2
@@ -83,7 +83,7 @@ video_hdmi_or_cvbs:
     value: 0
   - name: CVBS
     value: 1
-  - name: OFF
+  - name: "OFF"
     value: 2
 
 typed_messages:
