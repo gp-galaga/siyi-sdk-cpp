@@ -155,6 +155,53 @@ namespace SIYI
             CHECK(error == "Invalid data length for AcquireZoomLevel telemetry packet. Expected 2 bytes, got 1 bytes.");
         }
 
+        TEST_CASE("AcquireSupportedZoomRange encodes expected payload")
+        {
+            OpticalZoomTestBaseCamera camera;
+            const auto frame = camera.AcquireSupportedZoomRange();
+
+            SIYIPacket packet;
+            REQUIRE(camera.DecodeFrame(frame, packet));
+
+            CHECK(packet.ctrl == static_cast<uint8_t>(ControlFlag::NEED_ACK));
+            CHECK(packet.cmdId == static_cast<uint8_t>(CommandId::ACQUIRE_ZOOM_RANGE));
+            CHECK(packet.data.empty());
+        }
+
+        TEST_CASE("DecodeTelemetryPacket correctly decodes ACQUIRE_ZOOM_RANGE response")
+        {
+            OpticalZoomTestBaseCamera camera;
+
+            SIYIPacket packet;
+            packet.cmdId = static_cast<uint8_t>(CommandId::ACQUIRE_ZOOM_RANGE);
+            packet.data = {0x1E, 0x00}; // max zoom 30.0
+            packet.dataLen = static_cast<uint16_t>(packet.data.size());
+
+            TM::TelemetryMessage message;
+            std::string error;
+            REQUIRE(camera.DecodeTelemetryPacket(packet, message, &error));
+
+            const auto* zoomRangeMsg = std::get_if<TM::SupportedZoomRange>(&message);
+            REQUIRE(zoomRangeMsg != nullptr);
+            CHECK(zoomRangeMsg->zoom_max_int == 30);
+            CHECK(zoomRangeMsg->zoom_max_float == 0);
+        }
+
+        TEST_CASE("DecodeTelemetryPacket returns false for ACQUIRE_ZOOM_RANGE with invalid data length")
+        {
+            OpticalZoomTestBaseCamera camera;
+
+            SIYIPacket packet;
+            packet.cmdId = static_cast<uint8_t>(CommandId::ACQUIRE_ZOOM_RANGE);
+            packet.data = {0x1E}; // invalid data length
+            packet.dataLen = static_cast<uint16_t>(packet.data.size());
+
+            TM::TelemetryMessage message;
+            std::string error;
+            CHECK_FALSE(camera.DecodeTelemetryPacket(packet, message, &error));
+            CHECK(error == "Invalid data length for SupportedZoomRange telemetry packet. Expected 2 bytes, got 1 bytes.");
+        }
+
         TEST_CASE("DecodeTelemetryPacket returns false for unknown cmdId")
         {
             OpticalZoomTestBaseCamera camera;

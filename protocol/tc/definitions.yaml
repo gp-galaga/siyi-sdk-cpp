@@ -40,6 +40,8 @@ commands:
     value: 0x0F
   - name: ACQUIRE_ZOOM_LEVEL
     value: 0x18
+  - name: ACQUIRE_ZOOM_RANGE
+    value: 0x16
 
   - name: SET_UTC_TIME
     value: 0x30

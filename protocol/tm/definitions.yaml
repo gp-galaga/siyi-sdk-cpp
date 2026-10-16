@@ -257,7 +257,17 @@ typed_messages:
     payload_len: 2
     note: ACK returned by camera with zoom value separeted in two integer for integer value and decimal value
     fields:
-      - name: zoom_int 
+      - name: zoom_int
         type: uint8
       - name: zoom_float
+        type: uint8
+
+  - name: SupportedZoomRange
+    cmd_id: ACQUIRE_ZOOM_RANGE
+    payload_len: 2
+    note: ACK returned by camera with the maximum zoom multiplier, same int/decimal split as AcquireZoomLevel
+    fields:
+      - name: zoom_max_int
+        type: uint8
+      - name: zoom_max_float
         type: uint8

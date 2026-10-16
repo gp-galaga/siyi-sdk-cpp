@@ -99,6 +99,14 @@ namespace SIYI
             ControlFlag::NEED_ACK);
     }
 
+    std::vector<uint8_t> OpticalZoomCameraModel::AcquireSupportedZoomRange() const
+    {
+        return BuildPacket(
+            static_cast<uint8_t>(CommandId::ACQUIRE_ZOOM_RANGE),
+            {},
+            ControlFlag::NEED_ACK);
+    }
+
     bool OpticalZoomCameraModel::DecodeTelemetryPacket(const SIYIPacket& packet, TM::TelemetryMessage& outMessage, std::string* error) const{
         if (packet.cmdId == static_cast<uint8_t>(CommandId::ACQUIRE_ZOOM_LEVEL))
         {
@@ -116,6 +124,25 @@ namespace SIYI
             zoomLevel.zoom_float = packet.data[1];
 
             outMessage = zoomLevel;
+            return true;
+        }
+
+        if (packet.cmdId == static_cast<uint8_t>(CommandId::ACQUIRE_ZOOM_RANGE))
+        {
+            if (packet.data.size() != 2)
+            {
+                if (error != nullptr)
+                {
+                    *error = "Invalid data length for SupportedZoomRange telemetry packet. Expected 2 bytes, got " + std::to_string(packet.data.size()) + " bytes.";
+                }
+                return false;
+            }
+
+            TM::SupportedZoomRange zoomRange;
+            zoomRange.zoom_max_int = packet.data[0];
+            zoomRange.zoom_max_float = packet.data[1];
+
+            outMessage = zoomRange;
             return true;
         }
 
