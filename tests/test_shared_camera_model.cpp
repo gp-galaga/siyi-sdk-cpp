@@ -294,6 +294,38 @@ namespace SIYI
             CHECK(info->AsFuncFeedbackInfoType() == TM::FeedbackInfoType::HDR_ON);
         }
 
+        TEST_CASE("Decode typed function-feedback telemetry for recording start/stop")
+        {
+            // SIYI ZR30 Optical Pod External SDK Guide v0.1.0: 0x0B info_type
+            // gained values 5 (recording started) and 6 (recording stopped).
+            TestBaseCamera camera;
+
+            SIYIPacket startedPacket;
+            startedPacket.ctrl = MakeDeviceAckControlByte();
+            startedPacket.cmdId = static_cast<uint8_t>(CommandId::FUNC_FEEDBACK_INFO);
+            startedPacket.data = {static_cast<uint8_t>(TM::FeedbackInfoType::RECORDING_STARTED)};
+            startedPacket.dataLen = static_cast<uint16_t>(startedPacket.data.size());
+
+            SIYIPacket stoppedPacket;
+            stoppedPacket.ctrl = MakeDeviceAckControlByte();
+            stoppedPacket.cmdId = static_cast<uint8_t>(CommandId::FUNC_FEEDBACK_INFO);
+            stoppedPacket.data = {static_cast<uint8_t>(TM::FeedbackInfoType::RECORDING_STOPPED)};
+            stoppedPacket.dataLen = static_cast<uint16_t>(stoppedPacket.data.size());
+
+            TM::TelemetryMessage startedMessage;
+            TM::TelemetryMessage stoppedMessage;
+            std::string error;
+            REQUIRE(camera.DecodeTelemetryPacket(startedPacket, startedMessage, &error));
+            REQUIRE(camera.DecodeTelemetryPacket(stoppedPacket, stoppedMessage, &error));
+
+            const auto* started = std::get_if<TM::FuncFeedbackInfo>(&startedMessage);
+            const auto* stopped = std::get_if<TM::FuncFeedbackInfo>(&stoppedMessage);
+            REQUIRE(started != nullptr);
+            REQUIRE(stopped != nullptr);
+            CHECK(started->AsFuncFeedbackInfoType() == TM::FeedbackInfoType::RECORDING_STARTED);
+            CHECK(stopped->AsFuncFeedbackInfoType() == TM::FeedbackInfoType::RECORDING_STOPPED);
+        }
+
         TEST_CASE("Generated enum ToString helpers expose symbolic names")
         {
             CHECK(std::string(ToString(CommandId::FUNC_FEEDBACK_INFO)) == "FUNC_FEEDBACK_INFO");

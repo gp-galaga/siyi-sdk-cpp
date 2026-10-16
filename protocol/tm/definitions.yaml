@@ -39,6 +39,10 @@ feedback_info_types:
     value: 3
   - name: FAILED_VIDEO_RECORD
     value: 4
+  - name: RECORDING_STARTED
+    value: 5
+  - name: RECORDING_STOPPED
+    value: 6
 
 stream_types:
   - name: RECORDING_STREAM
