@@ -271,3 +271,11 @@ typed_messages:
         type: uint8
       - name: zoom_max_float
         type: uint8
+
+  - name: GimbalDataStreamAck
+    cmd_id: REQUEST_GIMBAL_DATA_STREAM
+    payload_len: 1
+    note: ACK echoes the requested data_type (1 = attitude data)
+    fields:
+      - name: dataType
+        type: uint8

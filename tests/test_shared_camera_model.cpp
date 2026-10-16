@@ -727,6 +727,41 @@ namespace SIYI
             CHECK(readI32Le(28) == 7);
         }
 
+        TEST_CASE("RequestGimbalDataStream encodes correct command ID and payload")
+        {
+            // SIYI ZR30 Optical Pod External SDK Guide v0.1.0, CMD_ID 0x25:
+            // data_type=1 (attitude), data_freq=4 (10 Hz).
+            TestBaseCamera camera;
+
+            const auto frame = camera.RequestGimbalDataStream(1, 4);
+
+            SIYIPacket packet;
+            REQUIRE(camera.DecodeFrame(frame, packet));
+
+            CHECK(packet.cmdId == static_cast<uint8_t>(CommandId::REQUEST_GIMBAL_DATA_STREAM));
+            CHECK(packet.ctrl == static_cast<uint8_t>(ControlFlag::NEED_ACK));
+            CHECK(packet.data == std::vector<uint8_t>({0x01, 0x04}));
+        }
+
+        TEST_CASE("Decode RequestGimbalDataStream ACK with correct payload")
+        {
+            TestBaseCamera camera;
+
+            SIYIPacket packet;
+            packet.ctrl = MakeDeviceAckControlByte();
+            packet.cmdId = static_cast<uint8_t>(CommandId::REQUEST_GIMBAL_DATA_STREAM);
+            packet.data = {0x01};
+            packet.dataLen = static_cast<uint16_t>(packet.data.size());
+
+            TM::TelemetryMessage message;
+            std::string error;
+            REQUIRE(camera.DecodeTelemetryPacket(packet, message, &error));
+
+            const auto* ack = std::get_if<TM::GimbalDataStreamAck>(&message);
+            REQUIRE(ack != nullptr);
+            CHECK(ack->dataType == 1);
+        }
+
         TEST_CASE("Get format SD Card command encodes correct command ID and payload")
         {
             TestBaseCamera camera;

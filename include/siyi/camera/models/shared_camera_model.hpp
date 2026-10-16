@@ -143,6 +143,11 @@ namespace SIYI
                 int32_t altCm, int32_t altEllipsoidCm,
                 int32_t vnMmPerS, int32_t veMmPerS, int32_t vdMmPerS) const;
 
+            // dataType: 1 = attitude data. dataFrequency: 0 = disabled, 1 = 2 Hz, 2 = 4 Hz,
+            // 3 = 5 Hz, 4 = 10 Hz, 5 = 20 Hz, 6 = 50 Hz, 7 = 100 Hz. Once set, the gimbal
+            // autonomously streams ACQUIRE_GIMBAL_ATT (0x0D) telemetry at that rate.
+            std::vector<uint8_t> RequestGimbalDataStream(uint8_t dataType, uint8_t dataFrequency) const;
+
             std::vector<uint8_t> FormatSDCard() const;
 
             std::vector<uint8_t> SendCameraCodecSpecs(

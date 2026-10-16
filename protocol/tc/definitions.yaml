@@ -53,6 +53,8 @@ commands:
     value: 0x21
   - name: SEND_VEHICLE_ATTITUDE
     value: 0x22
+  - name: REQUEST_GIMBAL_DATA_STREAM
+    value: 0x25
   - name: SEND_GPS_RAW
     value: 0x3E
   - name: FORMAT_SD_CARD
