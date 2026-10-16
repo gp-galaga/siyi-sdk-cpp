@@ -62,6 +62,8 @@ commands:
     value: 0x3E
   - name: FORMAT_SD_CARD
     value: 0x48
+  - name: ACQUIRE_AI_MODE_STATUS
+    value: 0x4D
 
 stream_types:
   - name: RECORDING_STREAM

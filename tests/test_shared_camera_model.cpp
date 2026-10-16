@@ -810,5 +810,38 @@ namespace SIYI
             CHECK(packet.ctrl == static_cast<uint8_t>(ControlFlag::NEED_ACK));
             CHECK(packet.data.empty());
         }
+
+        TEST_CASE("AcquireAiModeStatus encodes correct command ID and payload")
+        {
+            TestBaseCamera camera;
+
+            const auto frame = camera.AcquireAiModeStatus();
+
+            SIYIPacket packet;
+            REQUIRE(camera.DecodeFrame(frame, packet));
+
+            CHECK(packet.cmdId == static_cast<uint8_t>(CommandId::ACQUIRE_AI_MODE_STATUS));
+            CHECK(packet.ctrl == static_cast<uint8_t>(ControlFlag::NEED_ACK));
+            CHECK(packet.data.empty());
+        }
+
+        TEST_CASE("Decode AcquireAiModeStatus ACK with correct payload")
+        {
+            TestBaseCamera camera;
+
+            SIYIPacket packet;
+            packet.ctrl = MakeDeviceAckControlByte();
+            packet.cmdId = static_cast<uint8_t>(CommandId::ACQUIRE_AI_MODE_STATUS);
+            packet.data = {0x01}; // AI mode on
+            packet.dataLen = static_cast<uint16_t>(packet.data.size());
+
+            TM::TelemetryMessage message;
+            std::string error;
+            REQUIRE(camera.DecodeTelemetryPacket(packet, message, &error));
+
+            const auto* status = std::get_if<TM::AiModeStatus>(&message);
+            REQUIRE(status != nullptr);
+            CHECK(status->AsAiModeStatus() == TM::AiModeStatusEnum::ON);
+        }
     }
 } // namespace SIYI

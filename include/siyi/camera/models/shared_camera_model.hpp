@@ -155,6 +155,8 @@ namespace SIYI
 
             std::vector<uint8_t> FormatSDCard() const;
 
+            std::vector<uint8_t> AcquireAiModeStatus() const;
+
             std::vector<uint8_t> SendCameraCodecSpecs(
                 TM::StreamType streamType,
                 TM::VideoEncType encType,

@@ -590,6 +590,14 @@ namespace SIYI
             ControlFlag::NEED_ACK);
     }
 
+    std::vector<uint8_t> SharedCameraModel::AcquireAiModeStatus() const
+    {
+        return BuildPacket(
+            static_cast<uint8_t>(CommandId::ACQUIRE_AI_MODE_STATUS),
+            {},
+            ControlFlag::NEED_ACK);
+    }
+
     std::vector<uint8_t> SharedCameraModel::BuildCustomCommand(
         const uint8_t cmdId,
         const std::vector<uint8_t> &payload,
@@ -832,6 +840,22 @@ namespace SIYI
             ack.dataType = packet.data[0];
 
             outMessage = ack;
+            return true;
+        } else if (packet.cmdId == static_cast<uint8_t>(CommandId::ACQUIRE_AI_MODE_STATUS)){
+            constexpr size_t kExpectedLen = 1;
+            if (packet.data.size() != kExpectedLen)
+            {
+                if (error != nullptr)
+                {
+                    *error = "ACQUIRE_AI_MODE_STATUS payload must be exactly 1 byte";
+                }
+                return false;
+            }
+
+            TM::AiModeStatus status;
+            status.sta = packet.data[0];
+
+            outMessage = status;
             return true;
         } else if (packet.data.size() == 1) {
             TM::CommandStatusAck statusAck;

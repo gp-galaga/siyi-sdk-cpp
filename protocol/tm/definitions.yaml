@@ -90,6 +90,12 @@ video_hdmi_or_cvbs:
   - name: "OFF"
     value: 2
 
+ai_mode_status:
+  - name: "OFF"
+    value: 0
+  - name: "ON"
+    value: 1
+
 typed_messages:
   - name: GimbalAttitude
     cmd_id: ACQUIRE_GIMBAL_ATT
@@ -287,3 +293,12 @@ typed_messages:
     fields:
       - name: dataType
         type: uint8
+
+  - name: AiModeStatus
+    cmd_id: ACQUIRE_AI_MODE_STATUS
+    payload_len: 1
+    fields:
+      - name: sta
+        type: uint8
+        enum_type: ai_mode_status
+        enum_helper: AsAiModeStatus
