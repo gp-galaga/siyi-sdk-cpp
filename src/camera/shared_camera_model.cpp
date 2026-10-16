@@ -5,6 +5,7 @@
 #include <array>
 #include <cctype>
 #include <cstdlib>
+#include <cstring>
 #include <iomanip>
 #include <stdexcept>
 #include <sstream>
@@ -73,6 +74,21 @@ namespace SIYI
                    (static_cast<uint32_t>(data[index + 1]) << 8) |
                    (static_cast<uint32_t>(data[index + 2]) << 16) |
                    (static_cast<uint32_t>(data[index + 3]) << 24);
+        }
+
+        void PushU32Le(std::vector<uint8_t> &data, uint32_t value)
+        {
+            data.push_back(static_cast<uint8_t>(value & 0xFF));
+            data.push_back(static_cast<uint8_t>((value >> 8) & 0xFF));
+            data.push_back(static_cast<uint8_t>((value >> 16) & 0xFF));
+            data.push_back(static_cast<uint8_t>((value >> 24) & 0xFF));
+        }
+
+        void PushFloatLe(std::vector<uint8_t> &data, float value)
+        {
+            uint32_t bits;
+            std::memcpy(&bits, &value, sizeof(bits));
+            PushU32Le(data, bits);
         }
     } // namespace CRC16
 
@@ -499,6 +515,27 @@ namespace SIYI
     std::vector<uint8_t> SharedCameraModel::PointDown() const
     {
         return ControlPhotoRecord(PhotoRecordFunction::ONE_KEY_POINT_DOWN);
+    }
+
+    std::vector<uint8_t> SharedCameraModel::SendVehicleAttitude(
+        const uint32_t timeBootMs,
+        const float rollRad, const float pitchRad, const float yawRad,
+        const float rollSpeedRadPerSec, const float pitchSpeedRadPerSec, const float yawSpeedRadPerSec) const
+    {
+        std::vector<uint8_t> payload;
+        payload.reserve(28);
+        CRC16::PushU32Le(payload, timeBootMs);
+        CRC16::PushFloatLe(payload, rollRad);
+        CRC16::PushFloatLe(payload, pitchRad);
+        CRC16::PushFloatLe(payload, yawRad);
+        CRC16::PushFloatLe(payload, rollSpeedRadPerSec);
+        CRC16::PushFloatLe(payload, pitchSpeedRadPerSec);
+        CRC16::PushFloatLe(payload, yawSpeedRadPerSec);
+
+        return BuildPacket(
+            static_cast<uint8_t>(CommandId::SEND_VEHICLE_ATTITUDE),
+            payload,
+            ControlFlag::NO_ACK);
     }
 
     std::vector<uint8_t> SharedCameraModel::FormatSDCard() const

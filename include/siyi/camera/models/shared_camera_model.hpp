@@ -125,6 +125,14 @@ namespace SIYI
 
             std::vector<uint8_t> AcquireGimbalWorkingMode() const;
 
+            // Fire-and-forget: the gimbal does not ACK this telemetry push.
+            // Angles/speeds use the NED frame (roll/pitch in [-pi/2, pi/2], yaw in [-pi, pi]);
+            // rotation order is yaw -> pitch -> roll. SIYI recommends 20-50 Hz.
+            std::vector<uint8_t> SendVehicleAttitude(
+                uint32_t timeBootMs,
+                float rollRad, float pitchRad, float yawRad,
+                float rollSpeedRadPerSec, float pitchSpeedRadPerSec, float yawSpeedRadPerSec) const;
+
             std::vector<uint8_t> FormatSDCard() const;
 
             std::vector<uint8_t> SendCameraCodecSpecs(

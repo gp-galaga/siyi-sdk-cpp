@@ -51,6 +51,8 @@ commands:
     value: 0x20
   - name: SEND_CODEC_SPECS
     value: 0x21
+  - name: SEND_VEHICLE_ATTITUDE
+    value: 0x22
   - name: FORMAT_SD_CARD
     value: 0x48
 

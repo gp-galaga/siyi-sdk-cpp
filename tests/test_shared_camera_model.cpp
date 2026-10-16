@@ -4,6 +4,8 @@
 #include "../include/siyi/camera/core/ack_policy.hpp"
 #include "../include/siyi/camera/models/shared_camera_model.hpp"
 
+#include <cstring>
+
 namespace SIYI
 {
     class TestBaseCamera final : public SharedCameraModel
@@ -647,6 +649,46 @@ namespace SIYI
             CHECK(convPacket.cmdId == static_cast<uint8_t>(CommandId::PHOTO_RECORD));
             CHECK(convPacket.data == std::vector<uint8_t>({static_cast<uint8_t>(PhotoRecordFunction::ONE_KEY_POINT_DOWN)}));
             CHECK(directPacket.data == convPacket.data);
+        }
+
+        TEST_CASE("SendVehicleAttitude encodes 28-byte little-endian payload with NO_ACK")
+        {
+            // SIYI ZR30 Optical Pod External SDK Guide v0.1.0, CMD_ID 0x22.
+            TestBaseCamera camera;
+
+            const auto frame = camera.SendVehicleAttitude(
+                0x01020304U,
+                1.0F, -2.0F, 3.0F,
+                -4.0F, 5.0F, -6.0F);
+
+            SIYIPacket packet;
+            REQUIRE(camera.DecodeFrame(frame, packet));
+
+            CHECK(packet.cmdId == static_cast<uint8_t>(CommandId::SEND_VEHICLE_ATTITUDE));
+            CHECK(packet.ctrl == static_cast<uint8_t>(ControlFlag::NO_ACK));
+            REQUIRE(packet.data.size() == 28);
+
+            CHECK(packet.data[0] == 0x04);
+            CHECK(packet.data[1] == 0x03);
+            CHECK(packet.data[2] == 0x02);
+            CHECK(packet.data[3] == 0x01);
+
+            const auto readFloatLe = [&packet](const size_t index) {
+                uint32_t bits = static_cast<uint32_t>(packet.data[index]) |
+                                 (static_cast<uint32_t>(packet.data[index + 1]) << 8) |
+                                 (static_cast<uint32_t>(packet.data[index + 2]) << 16) |
+                                 (static_cast<uint32_t>(packet.data[index + 3]) << 24);
+                float value;
+                std::memcpy(&value, &bits, sizeof(value));
+                return value;
+            };
+
+            CHECK(readFloatLe(4) == doctest::Approx(1.0F));
+            CHECK(readFloatLe(8) == doctest::Approx(-2.0F));
+            CHECK(readFloatLe(12) == doctest::Approx(3.0F));
+            CHECK(readFloatLe(16) == doctest::Approx(-4.0F));
+            CHECK(readFloatLe(20) == doctest::Approx(5.0F));
+            CHECK(readFloatLe(24) == doctest::Approx(-6.0F));
         }
 
         TEST_CASE("Get format SD Card command encodes correct command ID and payload")
