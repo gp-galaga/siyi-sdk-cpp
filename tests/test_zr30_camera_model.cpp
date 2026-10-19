@@ -65,7 +65,7 @@ namespace SIYI
             REQUIRE(camera.DecodeFrame(absZoomFrame, absZoomPacket));
 
             CHECK(autoFocusPacket.cmdId == static_cast<uint8_t>(CommandId::AUTO_FOCUS));
-            CHECK(autoFocusPacket.data == std::vector<uint8_t>({0x01, 0x00, 0x64, 0x00, 0xC8}));
+            CHECK(autoFocusPacket.data == std::vector<uint8_t>({0x01, 0x64, 0x00, 0xC8, 0x00}));
 
             CHECK(manualFocusPacket.cmdId == static_cast<uint8_t>(CommandId::MANUAL_FOCUS));
             CHECK(manualFocusPacket.data == std::vector<uint8_t>({0x01}));

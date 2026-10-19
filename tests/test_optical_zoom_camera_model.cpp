@@ -42,7 +42,17 @@ namespace SIYI
 
             CHECK(packet.ctrl == static_cast<uint8_t>(ControlFlag::NEED_ACK));
             CHECK(packet.cmdId == static_cast<uint8_t>(CommandId::AUTO_FOCUS));
-            CHECK(packet.data == std::vector<uint8_t>({0x01, 0x00, 0x64, 0x00, 0xC8}));
+            // Little-endian coordinates (100 = 0x0064, 200 = 0x00C8).
+            CHECK(packet.data == std::vector<uint8_t>({0x01, 0x64, 0x00, 0xC8, 0x00}));
+        }
+
+        TEST_CASE("AutoFocus at the image centre: coordinates little-endian, as the ZR30 takes them")
+        {
+            OpticalZoomTestBaseCamera camera;
+            SIYIPacket packet;
+            REQUIRE(camera.DecodeFrame(camera.AutoFocus(960, 540), packet));
+            // 960 = 0x03C0, 540 = 0x021C (big-endian, ACK 0 from the ZR30, desk test 2026-10-19).
+            CHECK(packet.data == std::vector<uint8_t>({0x01, 0xC0, 0x03, 0x1C, 0x02}));
         }
 
         TEST_CASE("ManualFocus encodes expected payload")

@@ -30,12 +30,14 @@ namespace SIYI
 
     std::vector<uint8_t> OpticalZoomCameraModel::AutoFocus(uint16_t x_coord, uint16_t y_coord) const
     {
+        // Coordinates little-endian, as every field of the protocol: the ZR30 refuses the
+        // big-endian ones (ACK 0; little-endian ACK 1, firmware 0x77000108, desk test 2026-10-19).
         std::vector<uint8_t> payload = {
             0x01, // AF start
-            static_cast<uint8_t>((x_coord >> 8) & 0xFF),
             static_cast<uint8_t>(x_coord & 0xFF),
-            static_cast<uint8_t>((y_coord >> 8) & 0xFF),
-            static_cast<uint8_t>(y_coord & 0xFF)};
+            static_cast<uint8_t>((x_coord >> 8) & 0xFF),
+            static_cast<uint8_t>(y_coord & 0xFF),
+            static_cast<uint8_t>((y_coord >> 8) & 0xFF)};
         return BuildPacket(
             static_cast<uint8_t>(CommandId::AUTO_FOCUS),
             payload,
