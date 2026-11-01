@@ -42,7 +42,9 @@ namespace SIYI
         std::vector<uint8_t> SetAbsoluteZoom(int zoomValue) const;
 
         std::vector<uint8_t> AcquireZoomLevel() const;
-        
+
+        std::vector<uint8_t> AcquireSupportedZoomRange() const;
+
         int16_t GetZoomOpticalMin() const noexcept { return zoom_optical_min_; }
         int16_t GetZoomOpticalMax() const noexcept { return zoom_optical_max_; }
         const OpticalZoomTechnicalSpecs& GetOpticalTechnicalSpecs() const noexcept { return optical_technical_specs_; }

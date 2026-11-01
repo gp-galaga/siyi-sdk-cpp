@@ -40,6 +40,8 @@ commands:
     value: 0x0F
   - name: ACQUIRE_ZOOM_LEVEL
     value: 0x18
+  - name: ACQUIRE_ZOOM_RANGE
+    value: 0x16
 
   - name: SET_UTC_TIME
     value: 0x30
@@ -49,8 +51,19 @@ commands:
     value: 0x20
   - name: SEND_CODEC_SPECS
     value: 0x21
+  - name: SEND_VEHICLE_ATTITUDE
+    value: 0x22
+  # Documented by SIYI as "Not in Use Yet" as of SDK Guide v0.1.0.
+  - name: REQUEST_FC_DATA_STREAM
+    value: 0x24
+  - name: REQUEST_GIMBAL_DATA_STREAM
+    value: 0x25
+  - name: SEND_GPS_RAW
+    value: 0x3E
   - name: FORMAT_SD_CARD
     value: 0x48
+  - name: ACQUIRE_AI_MODE_STATUS
+    value: 0x4D
 
 stream_types:
   - name: RECORDING_STREAM
@@ -87,6 +100,8 @@ photo_record_functions:
     value: 7
   - name: VIDEO_OUTPUT_OFF
     value: 8
+  - name: ONE_KEY_POINT_DOWN
+    value: 9
 
 manual_zoom_directions:
   - name: STOP
