@@ -512,11 +512,14 @@ def main() -> int:
     out_cmd.parent.mkdir(parents=True, exist_ok=True)
     out_tm.parent.mkdir(parents=True, exist_ok=True)
 
-    out_cmd.write_text(_render_cmd_parameter(tc_data), encoding="utf-8")
-    out_tm.write_text(_render_tm_parameter(tm_data), encoding="utf-8")
-
-    print(f"Generated: {out_cmd}")
-    print(f"Generated: {out_tm}")
+    for out, content in ((out_cmd, _render_cmd_parameter(tc_data)), (out_tm, _render_tm_parameter(tm_data))):
+        # Written only when its content changes: a rewrite with the same content would still touch the
+        # header, and the build would recompile everything including it (the SDK and its users).
+        if out.exists() and out.read_text(encoding="utf-8") == content:
+            print(f"Unchanged: {out}")
+            continue
+        out.write_text(content, encoding="utf-8")
+        print(f"Generated: {out}")
     return 0
 
 

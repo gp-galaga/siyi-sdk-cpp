@@ -86,7 +86,8 @@ else()
     set(DOCTEST_HEADER_PATH "${CMAKE_CURRENT_SOURCE_DIR}/tests")
 endif()
 
-if(EXISTS "${DOCTEST_HEADER_PATH}/doctest.h")
+# BUILD_TESTING (CTest, ON by default): OFF builds the library without its tests
+if(BUILD_TESTING AND EXISTS "${DOCTEST_HEADER_PATH}/doctest.h")
     add_executable(test_siyi_commands
         tests/test_shared_camera_model.cpp
         tests/test_optical_zoom_camera_model.cpp
@@ -96,6 +97,8 @@ if(EXISTS "${DOCTEST_HEADER_PATH}/doctest.h")
     
     add_test(NAME SIYICommands COMMAND test_siyi_commands)
     message(STATUS "Tests enabled")
+elseif(NOT BUILD_TESTING)
+    message(STATUS "Tests disabled (BUILD_TESTING OFF)")
 else()
     message(WARNING "doctest.h not found. Tests disabled.")
     message(WARNING "Download: wget -O tests/doctest.h https://raw.githubusercontent.com/doctest/doctest/master/doctest/doctest.h")
